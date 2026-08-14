@@ -7,7 +7,7 @@ import {
 import { Button } from "@/components/ui/button";
 
 type NodeKind = "origin" | "skirmish" | "focused" | "elite" | "anomaly" | "event" | "supply" | "rest" | "guardian" | "custom";
-type Accent = "brass" | "teal" | "slate";
+type Accent = "gold" | "ember" | "ash";
 type RouteNode = { id: string; stage: number; kind: NodeKind; icon: string; label: string; accent: Accent };
 type RouteTree = {
   title: string;
@@ -20,6 +20,8 @@ const STORAGE_KEY = "orbital-route-atlas.v2";
 const MAX_COLUMNS = 10;
 const MAX_NODES_PER_COLUMN = 3;
 const HISTORY_LIMIT = 80;
+const STANDARD_THEME = { background: "#16090c", line: "#9c3142" };
+const LEGACY_STANDARD_THEME = { background: "#101720", line: "#6e8594" };
 const asset = {
   logo: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663619237894/jQBlTeNNhwPADzZB.png",
   hero: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663619237894/LqcizDXlrLgPbSFx.jpg",
@@ -39,7 +41,8 @@ const kinds: Record<NodeKind, { label: string; short: string; description: strin
   guardian: { label: "終端警戒", short: "終", description: "区間の終端・強敵" },
   custom: { label: "任意", short: "任", description: "自由に設定する地点" },
 };
-const colors: Record<Accent, string> = { brass: "#e7b95e", teal: "#74d5d1", slate: "#8fa4ae" };
+const colors: Record<Accent, string> = { gold: "#c99a42", ember: "#b01c37", ash: "#786b68" };
+const legacyAccents: Record<string, Accent> = { brass: "gold", teal: "ember", slate: "ash" };
 const legacyKinds: Record<string, NodeKind> = { start: "origin", battle: "skirmish", elite: "elite", event: "event", shop: "supply", rest: "rest", boss: "guardian", custom: "custom" };
 
 const markerPaths: Record<Exclude<NodeKind, "custom">, string[]> = {
@@ -62,10 +65,15 @@ function clean(value: unknown, max = 28) { return String(value ?? "").replace(/[
 function clone<T>(value: T): T { return JSON.parse(JSON.stringify(value)); }
 function uuid() { return globalThis.crypto?.randomUUID?.() ?? `node_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`; }
 function escapeXml(value: unknown) { return String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;"); }
+export function defaultAccent(kind: NodeKind): Accent {
+  if (kind === "origin" || kind === "supply" || kind === "guardian") return "gold";
+  if (kind === "focused" || kind === "elite" || kind === "anomaly" || kind === "event") return "ember";
+  return "ash";
+}
 function nodeSeed(stage: number, index = 0): RouteNode {
   const defaults: NodeKind[] = ["origin", "skirmish", "event", "supply", "guardian"];
   const kind = stage === 0 ? "origin" : defaults[Math.min(stage, defaults.length - 1)] ?? "custom";
-  return { id: uuid(), stage, kind, icon: "", label: index ? `地点 ${stage + 1}-${index + 1}` : kinds[kind].label, accent: stage === 0 ? "teal" : "slate" };
+  return { id: uuid(), stage, kind, icon: "", label: index ? `地点 ${stage + 1}-${index + 1}` : kinds[kind].label, accent: defaultAccent(kind) };
 }
 function deriveEdges(nodes: RouteNode[]): [string, string][] {
   const highest = Math.max(0, ...nodes.map((node) => node.stage));
@@ -87,17 +95,17 @@ function ensureColumns(nodes: RouteNode[]) {
 }
 
 export const baseTree = (): RouteTree => {
-  const origin = { id: "origin", stage: 0, kind: "origin" as NodeKind, icon: "", label: "起点", accent: "teal" as Accent };
+  const origin = { id: "origin", stage: 0, kind: "origin" as NodeKind, icon: "", label: "起点", accent: "gold" as Accent };
   const nodes: RouteNode[] = [
     origin,
-    { id: "skirmish", stage: 1, kind: "skirmish", icon: "", label: "小規模交戦", accent: "slate" },
-    { id: "event", stage: 1, kind: "event", icon: "", label: "分岐事象", accent: "slate" },
-    { id: "focused", stage: 2, kind: "focused", icon: "", label: "正面衝突", accent: "teal" },
-    { id: "elite", stage: 2, kind: "elite", icon: "", label: "危険交戦", accent: "slate" },
-    { id: "supply", stage: 3, kind: "supply", icon: "", label: "補給所", accent: "slate" },
-    { id: "guardian", stage: 4, kind: "guardian", icon: "", label: "終端警戒", accent: "teal" },
+    { id: "skirmish", stage: 1, kind: "skirmish", icon: "", label: "小規模交戦", accent: "ash" },
+    { id: "event", stage: 1, kind: "event", icon: "", label: "分岐事象", accent: "ember" },
+    { id: "focused", stage: 2, kind: "focused", icon: "", label: "正面衝突", accent: "ember" },
+    { id: "elite", stage: 2, kind: "elite", icon: "", label: "危険交戦", accent: "ember" },
+    { id: "supply", stage: 3, kind: "supply", icon: "", label: "補給所", accent: "gold" },
+    { id: "guardian", stage: 4, kind: "guardian", icon: "", label: "終端警戒", accent: "gold" },
   ];
-  return { title: "移動ツリー", nodes, edges: deriveEdges(nodes), theme: { background: "#101720", line: "#6e8594", showLabels: false, iconSize: 27 } };
+  return { title: "移動ツリー", nodes, edges: deriveEdges(nodes), theme: { background: STANDARD_THEME.background, line: STANDARD_THEME.line, showLabels: false, iconSize: 27 } };
 };
 
 export function normalize(input: unknown): RouteTree {
@@ -111,7 +119,7 @@ export function normalize(input: unknown): RouteTree {
     kind: resolveKind(node.kind),
     icon: clean(node.icon, 6),
     label: clean(node.label, 28) || "地点",
-    accent: node.accent in colors ? node.accent : "slate" as Accent,
+    accent: node.accent in colors ? node.accent : legacyAccents[String(node.accent)] ?? defaultAccent(resolveKind(node.kind)),
   }));
   const prepared = ensureColumns(parsed.length ? parsed : fallback.nodes);
   return {
@@ -119,8 +127,8 @@ export function normalize(input: unknown): RouteTree {
     nodes: prepared,
     edges: deriveEdges(prepared),
     theme: {
-      background: typeof source.theme?.background === "string" ? source.theme.background : fallback.theme.background,
-      line: typeof source.theme?.line === "string" ? source.theme.line : fallback.theme.line,
+      background: source.theme?.background === LEGACY_STANDARD_THEME.background ? STANDARD_THEME.background : typeof source.theme?.background === "string" ? source.theme.background : fallback.theme.background,
+      line: source.theme?.line === LEGACY_STANDARD_THEME.line ? STANDARD_THEME.line : typeof source.theme?.line === "string" ? source.theme.line : fallback.theme.line,
       showLabels: Boolean(source.theme?.showLabels),
       iconSize: Math.max(18, Math.min(42, Number(source.theme?.iconSize) || fallback.theme.iconSize)),
     },
@@ -260,7 +268,7 @@ function RouteCanvas({ tree, selectedId, onNodeClick }: { tree: RouteTree; selec
       <rect width="100%" height="100%" rx="18" fill={tree.theme.background} />
       {columns.map((_, index) => <line key={index} x1={94 + index * 220} x2={94 + index * 220} y1="38" y2={height - 38} className="stage-guide" />)}
       {tree.edges.map(([from, to]) => { const a = positions[from]; const b = positions[to]; if (!a || !b) return null; const bend = Math.max(46, (b.x - a.x) * .47); return <path key={`${from}_${to}`} d={`M ${a.x + 47} ${a.y} C ${a.x + bend} ${a.y}, ${b.x - bend} ${b.y}, ${b.x - 47} ${b.y}`} fill="none" stroke={tree.theme.line} strokeWidth="3" strokeLinecap="round" strokeDasharray="8 7" markerEnd="url(#route-arrow)" />; })}
-      {tree.nodes.map((node) => { const p = positions[node.id]; const selected = selectedId === node.id; const mark = selected ? colors.brass : colors[node.accent]; return <g key={node.id} transform={`translate(${p.x} ${p.y})`} className={`route-node ${selected ? "is-selected" : ""}`} role="button" tabIndex={0} aria-label={`${node.label}を選択`} onClick={() => { if (!suppressClickRef.current) onNodeClick(node.id); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onNodeClick(node.id); } }}>
+      {tree.nodes.map((node) => { const p = positions[node.id]; const selected = selectedId === node.id; const mark = selected ? colors.gold : colors[node.accent]; return <g key={node.id} transform={`translate(${p.x} ${p.y})`} className={`route-node ${selected ? "is-selected" : ""}`} role="button" tabIndex={0} aria-label={`${node.label}を選択`} onClick={() => { if (!suppressClickRef.current) onNodeClick(node.id); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onNodeClick(node.id); } }}>
         <circle r="39" fill="#202d36" stroke={mark} strokeWidth={selected ? 5 : 3} />
         <circle r="29" fill="none" stroke={mark} strokeOpacity=".32" />
         <path d="M 0 -47 v 10 M 47 0 h -10 M 0 47 v -10 M -47 0 h 10" fill="none" stroke={mark} strokeWidth="2" strokeLinecap="round" />
@@ -304,6 +312,11 @@ export default function Home() {
     setSelectedId(node.id);
     message(`${kinds[kind].label}へ変更しました`);
   };
+  const applyStandardPalette = () => mutate((draft) => {
+    draft.theme.background = STANDARD_THEME.background;
+    draft.theme.line = STANDARD_THEME.line;
+    draft.nodes.forEach((node) => { node.accent = defaultAccent(node.kind); });
+  });
   const setColumnCount = (count: number) => {
     mutate((draft) => {
       const current = Math.max(...draft.nodes.map((node) => node.stage)) + 1;
@@ -335,7 +348,7 @@ export default function Home() {
 
   return <main className="min-h-screen app-shell">
     <header className="topline"><div className="brand"><img src={asset.logo} alt="" /><div><span>ORBITAL ROUTE ATLAS</span><small>TRPG MOVE MAP GENERATOR</small></div></div><a className="topline-open" href={import.meta.env.BASE_URL} target="_blank" rel="noopener noreferrer"><ExternalLink size={15} /> 別タブで開く</a></header>
-    <section className="hero" style={{ backgroundImage: `linear-gradient(90deg, rgba(8,15,21,.98) 0%, rgba(8,15,21,.9) 55%, rgba(8,15,21,.64)), url(${asset.hero})` }}><div><p className="eyebrow">ROUTE / BRANCH / MERGE</p><h1>起点を選び、列ごとに経路を組む。</h1><p className="hero-copy">列数と地点種別を整えると、経路は左から右へ自動でつながります。接続を個別に操作する必要はありません。</p></div><span className="hero-coordinate">ATLAS PLATE / A-02</span><img className="hero-reference" src={asset.reference} alt="" /></section>
+    <section className="hero"><div><p className="eyebrow">ROUTE / BRANCH / MERGE</p><h1>起点を選び、列ごとに経路を組む。</h1><p className="hero-copy">列数と地点種別を整えると、経路は左から右へ自動でつながります。接続を個別に操作する必要はありません。</p></div><span className="hero-coordinate">ATLAS PLATE / A-02 · FORWARD ONLY</span></section>
 
     <section className="command-strip" aria-label="ツリー操作"><div className="command-copy"><p>ROUTE REGISTER / CURRENT FILE</p><b>{tree.title}</b><span>{columnCount} 列 / {tree.nodes.length} 地点 / {tree.edges.length} 接続</span></div><div className="command-actions"><Button onClick={() => addNode(Math.min(columnCount - 1, 1))} className="brass-button"><Plus size={16} /> 地点を追加</Button><Button variant="outline" onClick={() => fileRef.current?.click()}><FileUp size={16} /> 設定を読む</Button><Button variant="outline" onClick={() => { downloadText("orbital-route-atlas.json", JSON.stringify(tree, null, 2), "application/json"); message("ツリー設定を保存しました"); }}><Save size={16} /> 設定を保存</Button><div className="history-actions" role="group" aria-label="編集履歴"><Button variant="outline" onClick={performUndo} disabled={!canUndo} title="編集を戻す（Ctrl/Cmd + Z）"><Undo2 size={16} /> 戻す</Button><Button variant="outline" onClick={performRedo} disabled={!canRedo} title="やり直す（Ctrl/Cmd + Shift + Z / Ctrl/Cmd + Y）"><Redo2 size={16} /> やり直す</Button></div></div></section>
 
@@ -343,9 +356,9 @@ export default function Home() {
       <aside className="editor-rail">
         <div className="rail-title"><div><p className="eyebrow">ROUTE SCHEMA</p><h2>列と地点の設定</h2></div><span>自動接続</span></div>
         <section className="schema-box"><div className="box-heading"><ChevronRight size={15} /><b>経路の長さ</b></div><label className="field"><span>始点から何列まで進めるか</span><select value={columnCount} onChange={(event) => setColumnCount(Number(event.target.value))}>{Array.from({ length: MAX_COLUMNS - 1 }, (_, index) => index + 2).map((count) => <option key={count} value={count}>{count} 列</option>)}</select></label><p>隣り合う列の地点はすべて接続されます。</p></section>
-        <section className="column-planner" aria-label="列ごとの地点種別"><div className="box-heading"><Move size={15} /><b>地点種別</b></div>{layout.columns.map((column, stage) => <div className="route-column" key={stage}><div className="column-heading"><span>列 {stage + 1}</span><small>{stage === 0 ? "起点" : `${column.length} 地点`}</small></div>{column.map((node) => <div className={`column-node ${selected.id === node.id ? "is-current" : ""}`} key={node.id}><button type="button" onClick={() => setSelectedId(node.id)} aria-label={`${node.label}を編集`}><svg viewBox="-24 -24 48 48" aria-hidden="true"><NodeMark node={node} color={selected.id === node.id ? colors.brass : colors[node.accent]} /></svg><span>{node.label}</span></button>{stage === 0 ? <span className="locked-kind">起点</span> : <select aria-label={`${node.label}の地点種別`} value={node.kind} onPointerDown={() => setSelectedId(node.id)} onFocus={() => setSelectedId(node.id)} onChange={(event) => setNodeKind(node, event.target.value as NodeKind)}>{Object.entries(kinds).filter(([key]) => key !== "origin").map(([key, item]) => <option key={key} value={key}>{item.short} {item.label}</option>)}</select>}</div>)}{stage > 0 && <button type="button" className="add-column-node" onClick={() => addNode(stage)} disabled={column.length >= MAX_NODES_PER_COLUMN}><Plus size={13} /> この列に地点を追加</button>}</div>)}</section>
+        <section className="column-planner" aria-label="列ごとの地点種別"><div className="box-heading"><Move size={15} /><b>地点種別</b></div>{layout.columns.map((column, stage) => <div className="route-column" key={stage}><div className="column-heading"><span>列 {stage + 1}</span><small>{stage === 0 ? "起点" : `${column.length} 地点`}</small></div>{column.map((node) => <div className={`column-node ${selected.id === node.id ? "is-current" : ""}`} key={node.id}><button type="button" onClick={() => setSelectedId(node.id)} aria-label={`${node.label}を編集`}><svg viewBox="-24 -24 48 48" aria-hidden="true"><NodeMark node={node} color={selected.id === node.id ? colors.gold : colors[node.accent]} /></svg><span>{node.label}</span></button>{stage === 0 ? <span className="locked-kind">起点</span> : <select aria-label={`${node.label}の地点種別`} value={node.kind} onPointerDown={() => setSelectedId(node.id)} onFocus={() => setSelectedId(node.id)} onChange={(event) => setNodeKind(node, event.target.value as NodeKind)}>{Object.entries(kinds).filter(([key]) => key !== "origin").map(([key, item]) => <option key={key} value={key}>{item.short} {item.label}</option>)}</select>}</div>)}{stage > 0 && <button type="button" className="add-column-node" onClick={() => addNode(stage)} disabled={column.length >= MAX_NODES_PER_COLUMN}><Plus size={13} /> この列に地点を追加</button>}</div>)}</section>
         <section className="selected-node-box"><div className="box-heading"><WandSparkles size={15} /><b>選択中の地点</b></div><p><strong>{kinds[selected.kind].label}</strong> — {kinds[selected.kind].description}</p><label className="field"><span>表示名</span><input value={selected.label} maxLength={28} onChange={(event) => updateNode(selected.id, { label: event.target.value })} /></label>{selected.kind === "custom" && <label className="field"><span>任意の記号</span><input value={selected.icon} maxLength={6} placeholder="例：◇ / 鍵 / ◆" onChange={(event) => updateNode(selected.id, { icon: event.target.value })} /></label>}<label className="field"><span>縁取り</span><select value={selected.accent} onChange={(event) => updateNode(selected.id, { accent: event.target.value as Accent })}>{Object.entries(colors).map(([key]) => <option key={key} value={key}>{key}</option>)}</select></label></section>
-        <div className="appearance-box"><div className="box-heading"><WandSparkles size={15} /><b>画像の見た目</b></div><div className="two-fields"><label className="field"><span>背景</span><input type="color" value={tree.theme.background} onChange={(event) => mutate((draft) => { draft.theme.background = event.target.value; })} /></label><label className="field"><span>接続線</span><input type="color" value={tree.theme.line} onChange={(event) => mutate((draft) => { draft.theme.line = event.target.value; })} /></label></div><label className="field"><span>アイコンの大きさ</span><input type="range" min="18" max="42" value={tree.theme.iconSize} onChange={(event) => mutate((draft) => { draft.theme.iconSize = Number(event.target.value); })} /></label><label className="check"><input type="checkbox" checked={tree.theme.showLabels} onChange={(event) => mutate((draft) => { draft.theme.showLabels = event.target.checked; })} /> アイコン名を表示する</label></div>
+        <div className="appearance-box"><div className="box-heading"><WandSparkles size={15} /><b>画像の見た目</b></div><div className="two-fields"><label className="field"><span>背景</span><input type="color" value={tree.theme.background} onChange={(event) => mutate((draft) => { draft.theme.background = event.target.value; })} /></label><label className="field"><span>接続線</span><input type="color" value={tree.theme.line} onChange={(event) => mutate((draft) => { draft.theme.line = event.target.value; })} /></label></div><Button variant="outline" size="sm" className="theme-reset" onClick={() => { applyStandardPalette(); message("黒・赤・金の標準配色を適用しました"); }}><RotateCcw size={14} /> 標準配色を適用</Button><label className="field"><span>アイコンの大きさ</span><input type="range" min="18" max="42" value={tree.theme.iconSize} onChange={(event) => mutate((draft) => { draft.theme.iconSize = Number(event.target.value); })} /></label><label className="check"><input type="checkbox" checked={tree.theme.showLabels} onChange={(event) => mutate((draft) => { draft.theme.showLabels = event.target.checked; })} /> アイコン名を表示する</label></div>
         <Button variant="ghost" className="danger-button" onClick={removeNode}><Trash2 size={16} /> この地点を削除</Button>
       </aside>
       <article className="canvas-panel" style={{ backgroundImage: `linear-gradient(rgba(13,20,27,.88), rgba(13,20,27,.94)), url(${asset.texture})` }}><header className="canvas-head"><div><p className="eyebrow">ORBITAL CANVAS</p><h2>移動ツリー</h2><span>列をまたぐ地点は自動で接続されます。地点を選んで種別を変えます。</span><p className="canvas-plate">FORWARD ROUTE / {columnCount} COLUMNS · {tree.nodes.length} WAYPOINTS</p></div><div className="export-actions"><Button variant="outline" onClick={() => { downloadText("orbital-route-atlas.svg", buildSvg(tree), "image/svg+xml;charset=utf-8"); message("SVGを保存しました"); }}><Download size={16} /> SVG</Button><Button variant="outline" onClick={exportPng}><FileDown size={16} /> PNG</Button></div></header>

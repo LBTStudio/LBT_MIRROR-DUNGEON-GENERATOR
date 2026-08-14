@@ -1,8 +1,15 @@
 import assert from "node:assert/strict";
-import { baseTree, buildSvg, changeNodeKind, createTreeHistory, layoutFor, normalize, recordTreeChange, redoTreeHistory, undoTreeHistory } from "../client/src/pages/Home";
+import { baseTree, buildSvg, changeNodeKind, createTreeHistory, defaultAccent, layoutFor, normalize, recordTreeChange, redoTreeHistory, undoTreeHistory } from "../client/src/pages/Home";
 
 const base = baseTree();
-assert.equal(base.nodes.length, 7, "初期テンプレートは7地点");
+assert.equal(base.nodes.length, 7, "初期ツリーは7地点");
+assert.equal(base.theme.background, "#16090c", "初期背景は黒を基調にする");
+assert.equal(base.theme.line, "#9c3142", "初期経路は深紅を基調にする");
+assert.equal(defaultAccent("guardian"), "gold", "終端警戒は古金の役割色にする");
+assert.equal(defaultAccent("elite"), "ember", "危険交戦は深紅の役割色にする");
+const migratedTheme = normalize({ nodes: base.nodes, theme: { background: "#101720", line: "#6e8594", showLabels: false, iconSize: 27 } });
+assert.equal(migratedTheme.theme.background, "#16090c", "旧標準背景は新しい黒の初期テーマへ移行する");
+assert.equal(migratedTheme.theme.line, "#9c3142", "旧標準経路色は新しい深紅の初期テーマへ移行する");
 assert.equal(base.edges.length, 9, "初期テンプレートは列間の自動接続を9本生成する");
 
 const byId = new Map(base.nodes.map((node) => [node.id, node]));
