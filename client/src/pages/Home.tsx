@@ -1,8 +1,8 @@
 /* Orbital Route Atlas: independent celestial cartography with circular compass waypoints and dotted forward routes. */
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ArrowRight, Download, FileDown, FileUp, Link2, Link2Off, MapPin,
-  Plus, RotateCcw, Save, Trash2, Upload, WandSparkles
+  ArrowRight, Download, ExternalLink, FileDown, FileUp, Link2, Link2Off, MapPin,
+  Maximize2, Minus, Move, Plus, RotateCcw, Save, Trash2, Upload, WandSparkles
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -143,19 +143,56 @@ function downloadText(filename: string, body: string, type: string) {
 
 function RouteCanvas({ tree, selectedId, connectingFrom, onNodeClick }: { tree: RouteTree; selectedId: string; connectingFrom: string; onNodeClick: (id: string) => void }) {
   const { width, height, positions, columns } = layoutFor(tree);
-  return <div className="canvas-scroll"><svg className="route-svg" width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="img" aria-label="移動ツリーのプレビュー">
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const dragRef = useRef<{ id: number; x: number; y: number } | null>(null);
+  const movedRef = useRef(false);
+  const suppressClickRef = useRef(false);
+  const fit = () => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+    const narrow = window.matchMedia("(max-width: 640px)").matches;
+    const next = narrow ? Math.max(.33, Math.min(1, Math.min((viewport.clientWidth - 18) / width, (viewport.clientHeight - 18) / height))) : 1;
+    setZoom(next); setPan({ x: 0, y: 0 });
+  };
+  useEffect(() => { fit(); const observer = new ResizeObserver(fit); if (viewportRef.current) observer.observe(viewportRef.current); return () => observer.disconnect(); }, [width, height]);
+  const changeZoom = (step: number) => setZoom((value) => Math.max(.33, Math.min(1.45, Number((value + step).toFixed(2)))));
+  const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0 && event.pointerType === "mouse") return;
+    dragRef.current = { id: event.pointerId, x: event.clientX, y: event.clientY }; movedRef.current = false;
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+  const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current; if (!drag || drag.id !== event.pointerId) return;
+    const dx = event.clientX - drag.x; const dy = event.clientY - drag.y;
+    if (Math.abs(dx) + Math.abs(dy) > 3) movedRef.current = true;
+    if (movedRef.current) setPan((value) => ({ x: value.x + dx, y: value.y + dy }));
+    dragRef.current = { id: event.pointerId, x: event.clientX, y: event.clientY };
+  };
+  const onPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (dragRef.current?.id !== event.pointerId) return;
+    if (movedRef.current) { suppressClickRef.current = true; window.setTimeout(() => { suppressClickRef.current = false; }, 0); }
+    dragRef.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+  };
+  const chooseNode = (id: string) => { if (!suppressClickRef.current) onNodeClick(id); };
+  return <div className="canvas-scroll" ref={viewportRef} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp} onWheel={(event) => { if (!event.ctrlKey && !event.metaKey) return; event.preventDefault(); changeZoom(event.deltaY > 0 ? -.08 : .08); }}>
+    <div className="canvas-transform" style={{ width, height, left: `calc(50% - ${width / 2}px)`, top: `calc(50% - ${height / 2}px)`, transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }}><svg className="route-svg" width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="img" aria-label="移動ツリーのプレビュー">
     <defs><marker id="route-arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill={tree.theme.line} /></marker></defs>
     <rect width="100%" height="100%" rx="18" fill={tree.theme.background} />
     {columns.map((_, index) => <line key={index} x1={94 + index * 220} x2={94 + index * 220} y1="38" y2={height - 38} className="stage-guide" />)}
     {tree.edges.map(([from, to]) => { const a = positions[from]; const b = positions[to]; if (!a || !b) return null; const bend = Math.max(46, (b.x - a.x) * .47); const active = connectingFrom === from || connectingFrom === to; return <path key={`${from}_${to}`} d={`M ${a.x + 47} ${a.y} C ${a.x + bend} ${a.y}, ${b.x - bend} ${b.y}, ${b.x - 47} ${b.y}`} fill="none" stroke={active ? "#e7b95e" : tree.theme.line} strokeWidth={active ? 4 : 3} strokeLinecap="round" strokeDasharray="8 7" markerEnd="url(#route-arrow)" />; })}
-    {tree.nodes.map((node) => { const p = positions[node.id]; const selected = selectedId === node.id; const origin = connectingFrom === node.id; const mark = selected || origin ? colors.brass : colors[node.accent]; return <g key={node.id} className={`route-node ${selected ? "is-selected" : ""} ${origin ? "is-origin" : ""}`} role="button" tabIndex={0} aria-label={`${node.label}を選択`} onClick={() => onNodeClick(node.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onNodeClick(node.id); } }}>
+    {tree.nodes.map((node) => { const p = positions[node.id]; const selected = selectedId === node.id; const origin = connectingFrom === node.id; const mark = selected || origin ? colors.brass : colors[node.accent]; return <g key={node.id} className={`route-node ${selected ? "is-selected" : ""} ${origin ? "is-origin" : ""}`} role="button" tabIndex={0} aria-label={`${node.label}を選択`} onClick={() => chooseNode(node.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); chooseNode(node.id); } }}>
       <circle cx={p.x} cy={p.y} r="39" fill="#202d36" stroke={mark} strokeWidth={selected || origin ? 5 : 3} />
       <circle cx={p.x} cy={p.y} r="29" fill="none" stroke={mark} strokeOpacity=".32" />
       <path d={waypointTicks(p.x, p.y)} fill="none" stroke={mark} strokeWidth="2" strokeLinecap="round" />
       <text x={p.x} y={p.y + tree.theme.iconSize * .34} textAnchor="middle" fill={mark} fontSize={tree.theme.iconSize}>{glyph(node)}</text>
       {tree.theme.showLabels && <text x={p.x} y={p.y + 61} textAnchor="middle" fill="#eef5f7" fontSize="14">{node.label}</text>}
     </g>; })}
-  </svg></div>;
+    </svg></div>
+    <div className="canvas-nav" aria-label="地図の表示倍率"><span><Move size={14} /> 全体を確認</span><div><button type="button" onClick={(event) => { event.stopPropagation(); changeZoom(-.1); }} aria-label="縮小"><Minus size={15} /></button><button type="button" onClick={(event) => { event.stopPropagation(); fit(); }} aria-label="全体表示"><Maximize2 size={14} /></button><button type="button" onClick={(event) => { event.stopPropagation(); changeZoom(.1); }} aria-label="拡大"><Plus size={15} /></button></div></div>
+  </div>;
 }
 
 export default function Home() {
@@ -190,7 +227,7 @@ export default function Home() {
   const outgoing = selected ? tree.edges.filter(([from]) => from === selected.id).map(([, to]) => tree.nodes.find((node) => node.id === to)).filter((node): node is RouteNode => Boolean(node)) : [];
 
   return <main className="min-h-screen app-shell">
-    <header className="topline"><div className="brand"><img src={asset.logo} alt="" /><div><span>ORBITAL ROUTE ATLAS</span><small>TRPG MOVE MAP GENERATOR</small></div></div><div className="topline-note"><MapPin size={15} /> 移動だけを記録する</div></header>
+    <header className="topline"><div className="brand"><img src={asset.logo} alt="" /><div><span>ORBITAL ROUTE ATLAS</span><small>TRPG MOVE MAP GENERATOR</small></div></div><a className="topline-open" href="/" target="_blank" rel="noopener noreferrer"><ExternalLink size={15} /> 別タブで開く</a></header>
     <section className="hero" style={{ backgroundImage: `linear-gradient(90deg, rgba(8,15,21,.96) 0%, rgba(8,15,21,.72) 54%, rgba(8,15,21,.28)), url(${asset.hero})` }}><div><p className="eyebrow">ROUTE / BRANCH / MERGE</p><h1>アイコンから、次のアイコンへ。</h1><p className="hero-copy">遭遇や報酬は書かない。セッションで必要な移動の選択肢だけを、分岐と合流のツリーにします。</p></div><img className="hero-reference" src={asset.reference} alt="" /></section>
 
     <section className="command-strip" aria-label="ツリー操作"><div className="command-copy"><b>{tree.title}</b><span>{tree.nodes.length} 地点 / {tree.edges.length} 接続</span></div><div className="command-actions"><Button onClick={addNode} className="brass-button"><Plus size={16} /> 地点を追加</Button><Button variant="outline" onClick={() => fileRef.current?.click()}><FileUp size={16} /> 設定を読む</Button><Button variant="outline" onClick={() => { downloadText("orbital-route-atlas.json", JSON.stringify(tree, null, 2), "application/json"); message("ツリー設定を保存しました"); }}><Save size={16} /> 設定を保存</Button><input ref={fileRef} type="file" accept="application/json" className="hidden" onChange={importTree} /></div></section>
