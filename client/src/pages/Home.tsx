@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronRight, Crosshair, Download, ExternalLink, FileDown, FileUp, Maximize2,
-  Minus, Move, Plus, RotateCcw, Save, Trash2, WandSparkles
+  Minus, Move, Plus, Redo2, RotateCcw, Save, Trash2, Undo2, WandSparkles
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -19,6 +19,7 @@ type RouteTree = {
 const STORAGE_KEY = "orbital-route-atlas.v2";
 const MAX_COLUMNS = 10;
 const MAX_NODES_PER_COLUMN = 3;
+const HISTORY_LIMIT = 80;
 const asset = {
   logo: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663619237894/jQBlTeNNhwPADzZB.png",
   hero: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663619237894/LqcizDXlrLgPbSFx.jpg",
@@ -126,12 +127,35 @@ export function normalize(input: unknown): RouteTree {
   };
 }
 
-function useTree() {
-  const [tree, setTree] = useState<RouteTree>(() => {
-    try { return normalize(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem("orbital-route-atlas.v1") ?? "")); } catch { return baseTree(); }
-  });
+export type TreeHistory = { past: RouteTree[]; present: RouteTree; future: RouteTree[] };
+export function createTreeHistory(tree: RouteTree): TreeHistory { return { past: [], present: normalize(tree), future: [] }; }
+export function recordTreeChange(history: TreeHistory, next: RouteTree): TreeHistory {
+  const prepared = normalize(next);
+  if (JSON.stringify(prepared) === JSON.stringify(history.present)) return history;
+  return { past: [...history.past, clone(history.present)].slice(-HISTORY_LIMIT), present: prepared, future: [] };
+}
+export function undoTreeHistory(history: TreeHistory): TreeHistory {
+  if (!history.past.length) return history;
+  const prior = history.past[history.past.length - 1];
+  return { past: history.past.slice(0, -1), present: clone(prior), future: [clone(history.present), ...history.future].slice(0, HISTORY_LIMIT) };
+}
+export function redoTreeHistory(history: TreeHistory): TreeHistory {
+  if (!history.future.length) return history;
+  const next = history.future[0];
+  return { past: [...history.past, clone(history.present)].slice(-HISTORY_LIMIT), present: clone(next), future: history.future.slice(1) };
+}
+function loadTree(): RouteTree {
+  try { return normalize(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem("orbital-route-atlas.v1") ?? "")); } catch { return baseTree(); }
+}
+function useTreeHistory() {
+  const [history, setHistory] = useState<TreeHistory>(() => createTreeHistory(loadTree()));
+  const tree = history.present;
   useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(tree)); }, [tree]);
-  return [tree, setTree] as const;
+  const mutate = (action: (draft: RouteTree) => void) => setHistory((previous) => { const next = clone(previous.present); action(next); return recordTreeChange(previous, next); });
+  const replace = (next: RouteTree) => setHistory((previous) => recordTreeChange(previous, next));
+  const undo = () => setHistory((previous) => undoTreeHistory(previous));
+  const redo = () => setHistory((previous) => redoTreeHistory(previous));
+  return { tree, mutate, replace, undo, redo, canUndo: history.past.length > 0, canRedo: history.future.length > 0 };
 }
 
 export function layoutFor(tree: RouteTree) {
@@ -244,7 +268,7 @@ function RouteCanvas({ tree, selectedId, onNodeClick }: { tree: RouteTree; selec
 }
 
 export default function Home() {
-  const [tree, setTree] = useTree();
+  const { tree, mutate, replace, undo, redo, canUndo, canRedo } = useTreeHistory();
   const [selectedId, setSelectedId] = useState("origin");
   const [notice, setNotice] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
@@ -252,8 +276,22 @@ export default function Home() {
   const selected = tree.nodes.find((node) => node.id === selectedId) ?? tree.nodes[0];
   const columnCount = layout.columns.length;
   const message = (text: string) => { setNotice(text); window.setTimeout(() => setNotice(""), 2600); };
-  const mutate = (action: (draft: RouteTree) => void) => setTree((previous) => { const next = clone(previous); action(next); return normalize(next); });
   useEffect(() => { if (!tree.nodes.some((node) => node.id === selectedId)) setSelectedId(tree.nodes[0]?.id ?? ""); }, [tree.nodes, selectedId]);
+  const performUndo = () => { if (!canUndo) { message("これ以上戻せる編集はありません"); return; } undo(); message("編集を1つ戻しました"); };
+  const performRedo = () => { if (!canRedo) { message("やり直せる編集はありません"); return; } redo(); message("編集を1つやり直しました"); };
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((!event.ctrlKey && !event.metaKey) || event.altKey) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("input, textarea, select, [contenteditable='true']")) return;
+      const key = event.key.toLowerCase();
+      if (key === "z" && event.shiftKey) { event.preventDefault(); performRedo(); }
+      else if (key === "z") { event.preventDefault(); performUndo(); }
+      else if (key === "y") { event.preventDefault(); performRedo(); }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [canUndo, canRedo]);
   const updateNode = (id: string, patch: Partial<RouteNode>) => mutate((draft) => { const node = draft.nodes.find((item) => item.id === id); if (node) Object.assign(node, patch); });
   const setColumnCount = (count: number) => {
     mutate((draft) => {
@@ -276,19 +314,19 @@ export default function Home() {
     mutate((draft) => { draft.nodes = draft.nodes.filter((node) => node.id !== selected.id); });
     setSelectedId(tree.nodes.find((node) => node.id !== selected.id)?.id ?? "origin"); message("地点を削除しました");
   };
-  const reset = () => { if (!confirm("移動ツリーを初期テンプレートへ戻しますか？")) return; setTree(baseTree()); setSelectedId("origin"); message("初期テンプレートへ戻しました"); };
+  const reset = () => { if (!confirm("移動ツリーを初期テンプレートへ戻しますか？")) return; replace(baseTree()); setSelectedId("origin"); message("初期テンプレートへ戻しました"); };
   const exportPng = () => {
     const svg = buildSvg(tree); const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml;charset=utf-8" })); const image = new Image();
     image.onload = () => { const { width, height } = layoutFor(tree); const canvas = document.createElement("canvas"); canvas.width = width * 2; canvas.height = height * 2; const context = canvas.getContext("2d"); context?.drawImage(image, 0, 0, canvas.width, canvas.height); URL.revokeObjectURL(url); canvas.toBlob((blob) => { if (!blob) return; const png = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = png; link.download = "orbital-route-atlas.png"; link.click(); setTimeout(() => URL.revokeObjectURL(png), 1000); message("PNGを保存しました"); }, "image/png"); };
     image.src = url;
   };
-  const importTree = (event: React.ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = () => { try { const next = normalize(JSON.parse(String(reader.result))); setTree(next); setSelectedId(next.nodes[0]?.id ?? ""); message("ツリー設定を読み込みました"); } catch { message("ツリー設定を読み込めませんでした"); } }; reader.readAsText(file); event.target.value = ""; };
+  const importTree = (event: React.ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = () => { try { const next = normalize(JSON.parse(String(reader.result))); replace(next); setSelectedId(next.nodes[0]?.id ?? ""); message("ツリー設定を読み込みました"); } catch { message("ツリー設定を読み込めませんでした"); } }; reader.readAsText(file); event.target.value = ""; };
 
   return <main className="min-h-screen app-shell">
     <header className="topline"><div className="brand"><img src={asset.logo} alt="" /><div><span>ORBITAL ROUTE ATLAS</span><small>TRPG MOVE MAP GENERATOR</small></div></div><a className="topline-open" href={import.meta.env.BASE_URL} target="_blank" rel="noopener noreferrer"><ExternalLink size={15} /> 別タブで開く</a></header>
     <section className="hero" style={{ backgroundImage: `linear-gradient(90deg, rgba(8,15,21,.98) 0%, rgba(8,15,21,.9) 55%, rgba(8,15,21,.64)), url(${asset.hero})` }}><div><p className="eyebrow">ROUTE / BRANCH / MERGE</p><h1>起点を選び、列ごとに経路を組む。</h1><p className="hero-copy">列数と地点種別を整えると、経路は左から右へ自動でつながります。接続を個別に操作する必要はありません。</p></div><span className="hero-coordinate">ATLAS PLATE / A-02</span><img className="hero-reference" src={asset.reference} alt="" /></section>
 
-    <section className="command-strip" aria-label="ツリー操作"><div className="command-copy"><p>ROUTE REGISTER / CURRENT FILE</p><b>{tree.title}</b><span>{columnCount} 列 / {tree.nodes.length} 地点 / {tree.edges.length} 接続</span></div><div className="command-actions"><Button onClick={() => addNode(Math.min(columnCount - 1, 1))} className="brass-button"><Plus size={16} /> 地点を追加</Button><Button variant="outline" onClick={() => fileRef.current?.click()}><FileUp size={16} /> 設定を読む</Button><Button variant="outline" onClick={() => { downloadText("orbital-route-atlas.json", JSON.stringify(tree, null, 2), "application/json"); message("ツリー設定を保存しました"); }}><Save size={16} /> 設定を保存</Button><input ref={fileRef} type="file" accept="application/json" className="hidden" onChange={importTree} /></div></section>
+    <section className="command-strip" aria-label="ツリー操作"><div className="command-copy"><p>ROUTE REGISTER / CURRENT FILE</p><b>{tree.title}</b><span>{columnCount} 列 / {tree.nodes.length} 地点 / {tree.edges.length} 接続</span></div><div className="command-actions"><Button onClick={() => addNode(Math.min(columnCount - 1, 1))} className="brass-button"><Plus size={16} /> 地点を追加</Button><Button variant="outline" onClick={() => fileRef.current?.click()}><FileUp size={16} /> 設定を読む</Button><Button variant="outline" onClick={() => { downloadText("orbital-route-atlas.json", JSON.stringify(tree, null, 2), "application/json"); message("ツリー設定を保存しました"); }}><Save size={16} /> 設定を保存</Button><div className="history-actions" role="group" aria-label="編集履歴"><Button variant="outline" onClick={performUndo} disabled={!canUndo} title="編集を戻す（Ctrl/Cmd + Z）"><Undo2 size={16} /> 戻す</Button><Button variant="outline" onClick={performRedo} disabled={!canRedo} title="やり直す（Ctrl/Cmd + Shift + Z / Ctrl/Cmd + Y）"><Redo2 size={16} /> やり直す</Button></div><input ref={fileRef} type="file" accept="application/json" className="hidden" onChange={importTree} /></div></section>
 
     <section className="workspace">
       <aside className="editor-rail">

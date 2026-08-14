@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { baseTree, buildSvg, layoutFor, normalize } from "../client/src/pages/Home";
+import { baseTree, buildSvg, createTreeHistory, layoutFor, normalize, recordTreeChange, redoTreeHistory, undoTreeHistory } from "../client/src/pages/Home";
 
 const base = baseTree();
 assert.equal(base.nodes.length, 7, "初期テンプレートは7地点");
@@ -33,4 +33,15 @@ assert.ok(svg.includes("◆"), "任意アイコンをSVGへ出力する");
 assert.ok(svg.includes("marker"), "SVGに進行方向の矢印を含める");
 assert.ok(svg.includes("<path"), "SVGに独自の航路と地点記号を含める");
 
-console.log("route-tree: 列ベースの回帰試験に通過");
+const historyStart = createTreeHistory(base);
+const historyOne = recordTreeChange(historyStart, { ...base, title: "一手目" });
+const historyTwo = recordTreeChange(historyOne, { ...historyOne.present, title: "二手目" });
+assert.equal(historyTwo.past.length, 2, "連続編集は履歴に記録する");
+const undone = undoTreeHistory(historyTwo);
+assert.equal(undone.present.title, "一手目", "Undoは直前の編集状態へ戻す");
+const redone = redoTreeHistory(undone);
+assert.equal(redone.present.title, "二手目", "Redoは取り消した編集を復元する");
+const replacedAfterUndo = recordTreeChange(undone, { ...undone.present, title: "分岐後" });
+assert.equal(replacedAfterUndo.future.length, 0, "Undo後の新規編集はRedo履歴を破棄する");
+
+console.log("route-tree: 列ベースと編集履歴の回帰試験に通過");
