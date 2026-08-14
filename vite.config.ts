@@ -206,7 +206,7 @@ function vitePluginStorageProxy(): Plugin {
 const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime(), vitePluginManusDebugCollector(), vitePluginStorageProxy()];
 
 export default defineConfig({
-  base: process.env.GITHUB_PAGES === "true" ? "/orbital-route-atlas/" : "/",
+  base: process.env.GITHUB_PAGES === "true" ? "/LBT_MIRROR-DUNGEON-GENERATOR/" : "/",
   plugins,
   resolve: {
     alias: {

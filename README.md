@@ -12,7 +12,7 @@
 
 ## GitHub Pagesでの公開
 
-このリポジトリでは、`main`への更新時にGitHub Actionsが静的ファイルを生成し、GitHub Pagesへ配布します。リポジトリの **Settings → Pages** で、公開元として **GitHub Actions** を一度だけ選択してください。公開URLは通常、`https://<owner>.github.io/orbital-route-atlas/`です。
+このリポジトリでは、`main`への更新時にGitHub Actionsが静的ファイルを生成し、GitHub Pagesへ配布します。公開URLは `https://lbtstudio.github.io/LBT_MIRROR-DUNGEON-GENERATOR/` です。
 
 静的配布用のビルドは次のとおりです。
 
