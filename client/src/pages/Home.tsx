@@ -65,7 +65,7 @@ function escapeXml(value: unknown) { return String(value ?? "").replace(/&/g, "&
 function nodeSeed(stage: number, index = 0): RouteNode {
   const defaults: NodeKind[] = ["origin", "skirmish", "event", "supply", "guardian"];
   const kind = stage === 0 ? "origin" : defaults[Math.min(stage, defaults.length - 1)] ?? "custom";
-  return { id: uuid(), stage, kind, icon: "", label: index ? `地点 ${stage + 1}-${index + 1}` : kinds[kind].label, accent: stage === 0 ? "teal" : stage === 4 ? "brass" : "slate" };
+  return { id: uuid(), stage, kind, icon: "", label: index ? `地点 ${stage + 1}-${index + 1}` : kinds[kind].label, accent: stage === 0 ? "teal" : "slate" };
 }
 function deriveEdges(nodes: RouteNode[]): [string, string][] {
   const highest = Math.max(0, ...nodes.map((node) => node.stage));
@@ -93,9 +93,9 @@ export const baseTree = (): RouteTree => {
     { id: "skirmish", stage: 1, kind: "skirmish", icon: "", label: "小規模交戦", accent: "slate" },
     { id: "event", stage: 1, kind: "event", icon: "", label: "分岐事象", accent: "slate" },
     { id: "focused", stage: 2, kind: "focused", icon: "", label: "正面衝突", accent: "teal" },
-    { id: "elite", stage: 2, kind: "elite", icon: "", label: "危険交戦", accent: "brass" },
+    { id: "elite", stage: 2, kind: "elite", icon: "", label: "危険交戦", accent: "slate" },
     { id: "supply", stage: 3, kind: "supply", icon: "", label: "補給所", accent: "slate" },
-    { id: "guardian", stage: 4, kind: "guardian", icon: "", label: "終端警戒", accent: "brass" },
+    { id: "guardian", stage: 4, kind: "guardian", icon: "", label: "終端警戒", accent: "teal" },
   ];
   return { title: "移動ツリー", nodes, edges: deriveEdges(nodes), theme: { background: "#101720", line: "#6e8594", showLabels: false, iconSize: 27 } };
 };
@@ -326,7 +326,7 @@ export default function Home() {
     <header className="topline"><div className="brand"><img src={asset.logo} alt="" /><div><span>ORBITAL ROUTE ATLAS</span><small>TRPG MOVE MAP GENERATOR</small></div></div><a className="topline-open" href={import.meta.env.BASE_URL} target="_blank" rel="noopener noreferrer"><ExternalLink size={15} /> 別タブで開く</a></header>
     <section className="hero" style={{ backgroundImage: `linear-gradient(90deg, rgba(8,15,21,.98) 0%, rgba(8,15,21,.9) 55%, rgba(8,15,21,.64)), url(${asset.hero})` }}><div><p className="eyebrow">ROUTE / BRANCH / MERGE</p><h1>起点を選び、列ごとに経路を組む。</h1><p className="hero-copy">列数と地点種別を整えると、経路は左から右へ自動でつながります。接続を個別に操作する必要はありません。</p></div><span className="hero-coordinate">ATLAS PLATE / A-02</span><img className="hero-reference" src={asset.reference} alt="" /></section>
 
-    <section className="command-strip" aria-label="ツリー操作"><div className="command-copy"><p>ROUTE REGISTER / CURRENT FILE</p><b>{tree.title}</b><span>{columnCount} 列 / {tree.nodes.length} 地点 / {tree.edges.length} 接続</span></div><div className="command-actions"><Button onClick={() => addNode(Math.min(columnCount - 1, 1))} className="brass-button"><Plus size={16} /> 地点を追加</Button><Button variant="outline" onClick={() => fileRef.current?.click()}><FileUp size={16} /> 設定を読む</Button><Button variant="outline" onClick={() => { downloadText("orbital-route-atlas.json", JSON.stringify(tree, null, 2), "application/json"); message("ツリー設定を保存しました"); }}><Save size={16} /> 設定を保存</Button><div className="history-actions" role="group" aria-label="編集履歴"><Button variant="outline" onClick={performUndo} disabled={!canUndo} title="編集を戻す（Ctrl/Cmd + Z）"><Undo2 size={16} /> 戻す</Button><Button variant="outline" onClick={performRedo} disabled={!canRedo} title="やり直す（Ctrl/Cmd + Shift + Z / Ctrl/Cmd + Y）"><Redo2 size={16} /> やり直す</Button></div><input ref={fileRef} type="file" accept="application/json" className="hidden" onChange={importTree} /></div></section>
+    <section className="command-strip" aria-label="ツリー操作"><div className="command-copy"><p>ROUTE REGISTER / CURRENT FILE</p><b>{tree.title}</b><span>{columnCount} 列 / {tree.nodes.length} 地点 / {tree.edges.length} 接続</span></div><div className="command-actions"><Button onClick={() => addNode(Math.min(columnCount - 1, 1))} className="brass-button"><Plus size={16} /> 地点を追加</Button><Button variant="outline" onClick={() => fileRef.current?.click()}><FileUp size={16} /> 設定を読む</Button><Button variant="outline" onClick={() => { downloadText("orbital-route-atlas.json", JSON.stringify(tree, null, 2), "application/json"); message("ツリー設定を保存しました"); }}><Save size={16} /> 設定を保存</Button><div className="history-actions" role="group" aria-label="編集履歴"><Button variant="outline" onClick={performUndo} disabled={!canUndo} title="編集を戻す（Ctrl/Cmd + Z）"><Undo2 size={16} /> 戻す</Button><Button variant="outline" onClick={performRedo} disabled={!canRedo} title="やり直す（Ctrl/Cmd + Shift + Z / Ctrl/Cmd + Y）"><Redo2 size={16} /> やり直す</Button></div></div></section>
 
     <section className="workspace">
       <aside className="editor-rail">
@@ -337,11 +337,13 @@ export default function Home() {
         <div className="appearance-box"><div className="box-heading"><WandSparkles size={15} /><b>画像の見た目</b></div><div className="two-fields"><label className="field"><span>背景</span><input type="color" value={tree.theme.background} onChange={(event) => mutate((draft) => { draft.theme.background = event.target.value; })} /></label><label className="field"><span>接続線</span><input type="color" value={tree.theme.line} onChange={(event) => mutate((draft) => { draft.theme.line = event.target.value; })} /></label></div><label className="field"><span>アイコンの大きさ</span><input type="range" min="18" max="42" value={tree.theme.iconSize} onChange={(event) => mutate((draft) => { draft.theme.iconSize = Number(event.target.value); })} /></label><label className="check"><input type="checkbox" checked={tree.theme.showLabels} onChange={(event) => mutate((draft) => { draft.theme.showLabels = event.target.checked; })} /> アイコン名を表示する</label></div>
         <Button variant="ghost" className="danger-button" onClick={removeNode}><Trash2 size={16} /> この地点を削除</Button>
       </aside>
-      <article className="canvas-panel" style={{ backgroundImage: `linear-gradient(rgba(13,20,27,.88), rgba(13,20,27,.94)), url(${asset.texture})` }}><header className="canvas-head"><div><p className="eyebrow">ORBITAL CANVAS</p><h2>移動ツリー</h2><span>列をまたぐ地点は自動で接続されます。地点を選んで種別を変えます。</span></div><div className="export-actions"><Button variant="outline" onClick={() => { downloadText("orbital-route-atlas.svg", buildSvg(tree), "image/svg+xml;charset=utf-8"); message("SVGを保存しました"); }}><Download size={16} /> SVG</Button><Button variant="outline" onClick={exportPng}><FileDown size={16} /> PNG</Button></div></header>
+      <article className="canvas-panel" style={{ backgroundImage: `linear-gradient(rgba(13,20,27,.88), rgba(13,20,27,.94)), url(${asset.texture})` }}><header className="canvas-head"><div><p className="eyebrow">ORBITAL CANVAS</p><h2>移動ツリー</h2><span>列をまたぐ地点は自動で接続されます。地点を選んで種別を変えます。</span><p className="canvas-plate">FORWARD ROUTE / {columnCount} COLUMNS · {tree.nodes.length} WAYPOINTS</p></div><div className="export-actions"><Button variant="outline" onClick={() => { downloadText("orbital-route-atlas.svg", buildSvg(tree), "image/svg+xml;charset=utf-8"); message("SVGを保存しました"); }}><Download size={16} /> SVG</Button><Button variant="outline" onClick={exportPng}><FileDown size={16} /> PNG</Button></div></header>
         <RouteCanvas tree={tree} selectedId={selected.id} onNodeClick={setSelectedId} />
+        <div className="mobile-flow-actions" aria-label="地図の操作"><p><span /> ROUTE OPERATIONS / EDIT LOG</p><div className="mobile-flow-primary"><Button onClick={() => addNode(Math.min(columnCount - 1, 1))} className="brass-button"><Plus size={16} /> 地点を追加</Button><Button variant="outline" onClick={() => fileRef.current?.click()}><FileUp size={16} /> 設定を読む</Button></div><div className="mobile-flow-secondary"><Button variant="outline" onClick={() => { downloadText("orbital-route-atlas.json", JSON.stringify(tree, null, 2), "application/json"); message("ツリー設定を保存しました"); }}><Save size={16} /> 設定を保存</Button></div><div className="history-actions mobile-history" role="group" aria-label="編集履歴"><Button variant="outline" onClick={performUndo} disabled={!canUndo} title="編集を戻す"><Undo2 size={16} /> 戻す</Button><Button variant="outline" onClick={performRedo} disabled={!canRedo} title="やり直す"><Redo2 size={16} /> やり直す</Button></div></div>
         <footer className="canvas-footer"><span>左から右への一方向ルートです。列を増やすと次の経路が生まれます。</span><Button variant="ghost" size="sm" onClick={reset}><RotateCcw size={15} /> 初期形に戻す</Button></footer>
       </article>
     </section>
+    <input ref={fileRef} type="file" accept="application/json" className="hidden" onChange={importTree} />
     {notice && <div className="toast" role="status">{notice}</div>}
   </main>;
 }
