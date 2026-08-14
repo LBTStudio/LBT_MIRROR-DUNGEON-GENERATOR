@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { baseTree, buildSvg, createTreeHistory, layoutFor, normalize, recordTreeChange, redoTreeHistory, undoTreeHistory } from "../client/src/pages/Home";
+import { baseTree, buildSvg, changeNodeKind, createTreeHistory, layoutFor, normalize, recordTreeChange, redoTreeHistory, undoTreeHistory } from "../client/src/pages/Home";
 
 const base = baseTree();
 assert.equal(base.nodes.length, 7, "初期テンプレートは7地点");
@@ -25,6 +25,13 @@ const legacyTree = normalize({
 });
 assert.equal(legacyTree.nodes.find((node) => node.id === "start")?.kind, "origin", "旧形式の開始地点を起点へ移行する");
 assert.equal(legacyTree.nodes.find((node) => node.id === "battle")?.kind, "skirmish", "旧形式の戦闘地点を小規模交戦へ移行する");
+
+const defaultNamedSkirmish = base.nodes.find((node) => node.id === "skirmish")!;
+const switchedKind = changeNodeKind(defaultNamedSkirmish, "anomaly");
+assert.equal(switchedKind.kind, "anomaly", "地点種別は一度の変更で更新する");
+assert.equal(switchedKind.label, "特異事象", "既定名称の地点は種別変更に合わせて名称も更新する");
+const namedNode = changeNodeKind({ ...defaultNamedSkirmish, label: "見張り台" }, "focused");
+assert.equal(namedNode.label, "見張り台", "利用者が入力した名称は種別変更で上書きしない");
 
 const layout = layoutFor(customTree);
 assert.ok(layout.width >= 820 && layout.height >= 420, "画像出力に必要なキャンバス寸法を確保する");
