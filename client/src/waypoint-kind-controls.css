@@ -1,0 +1,216 @@
+/* ORBITAL ROUTE ATLAS waypoint kind controls: show the current kind as high-contrast local state, then expose a large native select for efficient changes. */
+
+.column-node {
+  grid-template-columns: minmax(0, 1fr) minmax(126px, 0.86fr);
+  align-items: stretch;
+  gap: 8px;
+}
+
+.column-node > button {
+  min-height: 44px;
+  gap: 8px;
+  padding: 5px 8px;
+  color: #d8e6e8;
+  border-color: rgba(143, 184, 197, 0.42);
+  background: rgba(11, 21, 28, 0.8);
+}
+
+.column-node button span {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.node-kind-control,
+.locked-kind {
+  display: grid;
+  min-width: 0;
+  min-height: 44px;
+  align-content: center;
+  gap: 3px;
+  padding: 5px 8px;
+  color: #dbe9eb;
+  border: 1px solid rgba(94, 123, 139, 0.62);
+  border-radius: 6px;
+  background: #0d1820;
+}
+
+.node-kind-control > span,
+.locked-kind i {
+  color: #8fa5af;
+  font: 9px "DM Mono", monospace;
+  font-style: normal;
+  letter-spacing: 0.08em;
+}
+
+.select-shell {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  align-items: center;
+}
+
+.select-shell select {
+  width: 100%;
+  min-width: 0;
+  min-height: 24px;
+  padding: 1px 22px 1px 0;
+  color: #f2f7f7;
+  appearance: none;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color-scheme: dark;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.select-shell select option {
+  color: #eef6f7;
+  background: #0d1820;
+  font-weight: 600;
+}
+
+.select-shell svg {
+  position: absolute;
+  right: 0;
+  color: #90d5d5;
+  pointer-events: none;
+}
+
+.node-kind-control:hover {
+  border-color: rgba(132, 194, 198, 0.9);
+  background: #10232d;
+}
+
+.node-kind-control:focus-within {
+  border-color: #c99a42;
+  box-shadow: 0 0 0 2px rgba(201, 154, 66, 0.18);
+}
+
+.column-node.is-current .node-kind-control {
+  border-color: rgba(201, 154, 66, 0.88);
+  background: linear-gradient(90deg, rgba(76, 58, 27, 0.55), rgba(12, 21, 27, 0.92));
+  box-shadow: 0 0 0 1px rgba(201, 154, 66, 0.15);
+}
+
+.column-node.is-current .node-kind-control > span {
+  color: #d9bd7f;
+}
+
+.column-node.is-current .node-kind-control select {
+  color: #fff0cf;
+  border: 0;
+  background: transparent;
+}
+
+.locked-kind {
+  color: #c5eef0;
+  font: 700 12px "Noto Sans JP", sans-serif;
+}
+
+.selected-kind-readout {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px;
+  color: #eaf4f5;
+  border: 1px solid rgba(113, 192, 195, 0.5);
+  border-radius: 6px;
+  background: linear-gradient(90deg, rgba(18, 61, 66, 0.65), rgba(9, 19, 26, 0.9));
+}
+
+.selected-kind-readout > span {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  place-items: center;
+  color: #171207;
+  border-radius: 4px;
+  background: #d7ad54;
+  font: 700 15px "DM Mono", monospace;
+}
+
+.selected-kind-readout > div {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.selected-kind-readout small {
+  color: #9ab9bf;
+  font: 9px "DM Mono", monospace;
+  letter-spacing: 0.08em;
+}
+
+.selected-kind-readout strong {
+  color: #f5e5bb;
+  font-size: 14px;
+}
+
+.selected-kind-readout p {
+  margin: 0;
+  color: #c0d3d6;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.kind-editor-field {
+  gap: 5px;
+}
+
+.selected-kind-select {
+  min-height: 44px;
+  padding: 7px 10px;
+  border: 1px solid rgba(201, 154, 66, 0.74);
+  border-radius: 6px;
+  background: linear-gradient(90deg, rgba(78, 61, 27, 0.62), rgba(12, 21, 27, 0.95));
+  box-shadow: inset 0 0 0 1px rgba(201, 154, 66, 0.1);
+}
+
+.selected-kind-select select {
+  min-height: 28px;
+  color: #fff0cf;
+  border: 0;
+  background: transparent;
+  font-size: 13px;
+}
+
+.selected-kind-select svg {
+  right: 10px;
+  color: #f1ca76;
+}
+
+.selected-kind-select:focus-within {
+  border-color: #ffe0a0;
+  box-shadow: 0 0 0 3px rgba(201, 154, 66, 0.2);
+}
+
+.selected-kind-fixed {
+  padding: 9px 10px;
+  color: #c5d5d7;
+  border: 1px solid rgba(105, 146, 151, 0.48);
+  border-radius: 6px;
+  background: rgba(14, 34, 39, 0.48);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+@media (max-width: 640px) {
+  .column-node {
+    grid-template-columns: minmax(0, 1fr) minmax(150px, 0.88fr);
+    gap: 7px;
+  }
+
+  .column-node > button,
+  .node-kind-control,
+  .locked-kind {
+    min-height: 48px;
+  }
+
+  .node-kind-control {
+    padding: 6px 8px;
+  }
+}

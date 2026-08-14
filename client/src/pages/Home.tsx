@@ -1,7 +1,8 @@
 /* Orbital Route Atlas: left-to-right route cartography using the user-authorized reference encounter icon set, rendered inside a compact hex waypoint frame. */
+/* Dense cartographic editor: the selected waypoint and its current kind must remain legible, local, and actionable. */
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ChevronRight, Crosshair, Download, ExternalLink, FileDown, FileUp, Maximize2,
+  ChevronDown, ChevronRight, Crosshair, Download, ExternalLink, FileDown, FileUp, Maximize2,
   Minus, Move, Plus, Redo2, RotateCcw, Save, Trash2, Undo2, WandSparkles
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -401,8 +402,47 @@ export default function Home() {
       <aside className="editor-rail">
         <div className="rail-title"><div><p className="eyebrow">ROUTE SCHEMA</p><h2>列と地点の設定</h2></div><span>自動接続</span></div>
         <section className="schema-box"><div className="box-heading"><ChevronRight size={15} /><b>経路の長さ</b></div><label className="field"><span>始点から何列まで進めるか</span><select value={columnCount} onChange={(event) => setColumnCount(Number(event.target.value))}>{Array.from({ length: MAX_COLUMNS - 1 }, (_, index) => index + 2).map((count) => <option key={count} value={count}>{count} 列</option>)}</select></label><p>隣り合う列の地点はすべて接続されます。</p></section>
-        <section className="column-planner" aria-label="列ごとの地点種別"><div className="box-heading"><Move size={15} /><b>地点種別</b></div>{layout.columns.map((column, stage) => <div className="route-column" key={stage}><div className="column-heading"><span>列 {stage + 1}</span><small>{stage === 0 ? "起点" : `${column.length} 地点`}</small></div>{column.map((node) => <div className={`column-node ${selected.id === node.id ? "is-current" : ""}`} key={node.id}><button type="button" onClick={() => setSelectedId(node.id)} aria-label={`${node.label}を編集`}><svg viewBox="-24 -24 48 48" aria-hidden="true"><NodeMark node={node} color={selected.id === node.id ? colors.gold : colors[node.accent]} /></svg><span>{node.label}</span></button>{stage === 0 ? <span className="locked-kind">起点</span> : <select aria-label={`${node.label}の地点種別`} value={node.kind} onPointerDown={() => setSelectedId(node.id)} onFocus={() => setSelectedId(node.id)} onChange={(event) => setNodeKind(node, event.target.value as NodeKind)}>{Object.entries(kinds).filter(([key]) => key !== "origin").map(([key, item]) => <option key={key} value={key}>{item.short} {item.label}</option>)}</select>}</div>)}{stage > 0 && <button type="button" className="add-column-node" onClick={() => addNode(stage)} disabled={column.length >= MAX_NODES_PER_COLUMN}><Plus size={13} /> この列に地点を追加</button>}</div>)}</section>
-        <section className="selected-node-box"><div className="box-heading"><WandSparkles size={15} /><b>選択中の地点</b></div><p><strong>{kinds[selected.kind].label}</strong> — {kinds[selected.kind].description}</p><label className="field"><span>表示名</span><input value={selected.label} maxLength={28} onChange={(event) => updateNode(selected.id, { label: event.target.value })} /></label>{selected.kind === "custom" && <label className="field"><span>任意の記号</span><input value={selected.icon} maxLength={6} placeholder="例：◇ / 鍵 / ◆" onChange={(event) => updateNode(selected.id, { icon: event.target.value })} /></label>}<label className="field"><span>縁取り</span><select value={selected.accent} onChange={(event) => updateNode(selected.id, { accent: event.target.value as Accent })}>{Object.entries(colors).map(([key]) => <option key={key} value={key}>{key}</option>)}</select></label></section>
+        <section className="column-planner" aria-label="列ごとの地点種別">
+          <div className="box-heading"><Move size={15} /><b>地点種別</b></div>
+          {layout.columns.map((column, stage) => <div className="route-column" key={stage}>
+            <div className="column-heading"><span>列 {stage + 1}</span><small>{stage === 0 ? "起点" : `${column.length} 地点`}</small></div>
+            {column.map((node) => <div className={`column-node ${selected.id === node.id ? "is-current" : ""}`} key={node.id}>
+              <button type="button" onClick={() => setSelectedId(node.id)} aria-label={`${node.label}を編集`}>
+                <svg viewBox="-24 -24 48 48" aria-hidden="true"><NodeMark node={node} color={selected.id === node.id ? colors.gold : colors[node.accent]} /></svg>
+                <span>{node.label}</span>
+              </button>
+              {stage === 0 ? <span className="locked-kind"><i>種別</i>開始地点</span> : <label className="node-kind-control">
+                <span>地点種別</span>
+                <div className="select-shell">
+                  <select aria-label={`${node.label}の地点種別`} value={node.kind} onPointerDown={() => setSelectedId(node.id)} onFocus={() => setSelectedId(node.id)} onChange={(event) => setNodeKind(node, event.target.value as NodeKind)}>
+                    {Object.entries(kinds).filter(([key]) => key !== "origin").map(([key, item]) => <option key={key} value={key}>{item.short}　{item.label}</option>)}
+                  </select>
+                  <ChevronDown size={15} aria-hidden="true" />
+                </div>
+              </label>}
+            </div>)}
+            {stage > 0 && <button type="button" className="add-column-node" onClick={() => addNode(stage)} disabled={column.length >= MAX_NODES_PER_COLUMN}><Plus size={13} /> この列に地点を追加</button>}
+          </div>)}
+        </section>
+        <section className="selected-node-box">
+          <div className="box-heading"><WandSparkles size={15} /><b>選択中の地点</b></div>
+          <div className="selected-kind-readout">
+            <span aria-hidden="true">{kinds[selected.kind].short}</span>
+            <div><small>現在の地点種別</small><strong>{kinds[selected.kind].label}</strong><p>{kinds[selected.kind].description}</p></div>
+          </div>
+          {selected.stage === 0 ? <div className="selected-kind-fixed">開始地点は経路の起点として固定されています。</div> : <label className="field kind-editor-field">
+            <span>地点種別を変更</span>
+            <div className="select-shell selected-kind-select">
+              <select aria-label={`${selected.label}の地点種別を変更`} value={selected.kind} onChange={(event) => setNodeKind(selected, event.target.value as NodeKind)}>
+                {Object.entries(kinds).filter(([key]) => key !== "origin").map(([key, item]) => <option key={key} value={key}>{item.short}　{item.label} — {item.description}</option>)}
+              </select>
+              <ChevronDown size={18} aria-hidden="true" />
+            </div>
+          </label>}
+          <label className="field"><span>表示名</span><input value={selected.label} maxLength={28} onChange={(event) => updateNode(selected.id, { label: event.target.value })} /></label>
+          {selected.kind === "custom" && <label className="field"><span>任意の記号</span><input value={selected.icon} maxLength={6} placeholder="例：◇ / 鍵 / ◆" onChange={(event) => updateNode(selected.id, { icon: event.target.value })} /></label>}
+          <label className="field"><span>縁取り</span><select value={selected.accent} onChange={(event) => updateNode(selected.id, { accent: event.target.value as Accent })}>{Object.entries(colors).map(([key]) => <option key={key} value={key}>{key}</option>)}</select></label>
+        </section>
         <div className="appearance-box"><div className="box-heading"><WandSparkles size={15} /><b>画像の見た目</b></div><div className="two-fields"><label className="field"><span>背景</span><input type="color" value={tree.theme.background} onChange={(event) => mutate((draft) => { draft.theme.background = event.target.value; })} /></label><label className="field"><span>接続線</span><input type="color" value={tree.theme.line} onChange={(event) => mutate((draft) => { draft.theme.line = event.target.value; })} /></label></div><Button variant="outline" size="sm" className="theme-reset" onClick={() => { applyStandardPalette(); message("青緑の地図標準配色を適用しました"); }}><RotateCcw size={14} /> 地図標準配色を適用</Button><label className="field"><span>アイコンの大きさ</span><input type="range" min="18" max="42" value={tree.theme.iconSize} onChange={(event) => mutate((draft) => { draft.theme.iconSize = Number(event.target.value); })} /></label><label className="check"><input type="checkbox" checked={tree.theme.showLabels} onChange={(event) => mutate((draft) => { draft.theme.showLabels = event.target.checked; })} /> アイコン名を表示する</label></div>
         <Button variant="ghost" className="danger-button" onClick={removeNode}><Trash2 size={16} /> この地点を削除</Button>
       </aside>
