@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight, Download, ExternalLink, FileDown, FileUp, Link2, Link2Off, MapPin,
-  Maximize2, Minus, Move, Plus, RotateCcw, Save, Trash2, Upload, WandSparkles
+  Crosshair, Maximize2, Minus, Move, Plus, RotateCcw, Save, Trash2, Upload, WandSparkles
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -149,15 +149,33 @@ function RouteCanvas({ tree, selectedId, connectingFrom, onNodeClick }: { tree: 
   const dragRef = useRef<{ id: number; x: number; y: number } | null>(null);
   const movedRef = useRef(false);
   const suppressClickRef = useRef(false);
+  const isNarrow = () => window.matchMedia("(max-width: 640px)").matches;
   const fit = () => {
     const viewport = viewportRef.current;
     if (!viewport) return;
-    const narrow = window.matchMedia("(max-width: 640px)").matches;
+    const narrow = isNarrow();
     const next = narrow ? Math.max(.33, Math.min(1, Math.min((viewport.clientWidth - 18) / width, (viewport.clientHeight - 18) / height))) : 1;
     setZoom(next); setPan({ x: 0, y: 0 });
   };
-  useEffect(() => { fit(); const observer = new ResizeObserver(fit); if (viewportRef.current) observer.observe(viewportRef.current); return () => observer.disconnect(); }, [width, height]);
-  const changeZoom = (step: number) => setZoom((value) => Math.max(.33, Math.min(1.45, Number((value + step).toFixed(2)))));
+  const focusNode = (id: string) => {
+    const viewport = viewportRef.current;
+    const point = positions[id];
+    if (!viewport || !point || !isNarrow()) return;
+    const nextZoom = Math.max(.72, Math.min(.92, Number(((viewport.clientWidth - 28) / 390).toFixed(2))));
+    setZoom(nextZoom);
+    setPan({
+      x: Number(((width / 2 - point.x) * nextZoom).toFixed(1)),
+      y: Number(((height / 2 - point.y) * nextZoom - viewport.clientHeight * .08).toFixed(1)),
+    });
+  };
+  useEffect(() => {
+    const adjust = () => { if (isNarrow()) focusNode(selectedId); else fit(); };
+    adjust();
+    const observer = new ResizeObserver(adjust);
+    if (viewportRef.current) observer.observe(viewportRef.current);
+    return () => observer.disconnect();
+  }, [selectedId, width, height]);
+  const changeZoom = (step: number) => setZoom((value) => Math.max(.33, Math.min(2.4, Number((value + step).toFixed(2)))));
   const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     if (event.button !== 0 && event.pointerType === "mouse") return;
     dragRef.current = { id: event.pointerId, x: event.clientX, y: event.clientY }; movedRef.current = false;
@@ -191,7 +209,7 @@ function RouteCanvas({ tree, selectedId, connectingFrom, onNodeClick }: { tree: 
       {tree.theme.showLabels && <text x={p.x} y={p.y + 61} textAnchor="middle" fill="#eef5f7" fontSize="14">{node.label}</text>}
     </g>; })}
     </svg></div>
-    <div className="canvas-nav" aria-label="地図の表示倍率"><span><Move size={14} /> 全体を確認</span><div><button type="button" onClick={(event) => { event.stopPropagation(); changeZoom(-.1); }} aria-label="縮小"><Minus size={15} /></button><button type="button" onClick={(event) => { event.stopPropagation(); fit(); }} aria-label="全体表示"><Maximize2 size={14} /></button><button type="button" onClick={(event) => { event.stopPropagation(); changeZoom(.1); }} aria-label="拡大"><Plus size={15} /></button></div></div>
+    <div className="canvas-nav" aria-label="地図の表示倍率"><span><Move size={14} /> 表示倍率</span><button className="canvas-focus" type="button" onClick={(event) => { event.stopPropagation(); focusNode(selectedId); }} aria-label="選択地点を表示" title="選択地点を表示"><Crosshair size={14} /></button><div><button type="button" onClick={(event) => { event.stopPropagation(); changeZoom(-.1); }} aria-label="縮小"><Minus size={15} /></button><button type="button" onClick={(event) => { event.stopPropagation(); fit(); }} aria-label="全体表示"><Maximize2 size={14} /></button><button type="button" onClick={(event) => { event.stopPropagation(); changeZoom(.1); }} aria-label="拡大"><Plus size={15} /></button></div></div>
   </div>;
 }
 
