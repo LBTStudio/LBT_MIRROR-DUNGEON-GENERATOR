@@ -18,10 +18,10 @@ type RouteTree = {
 
 const STORAGE_KEY = "orbital-route-atlas.v1";
 const asset = {
-  logo: "/manus-storage/mrt-logo-mark_848914a2.png",
-  hero: "/manus-storage/mrt-hero-route-lattice_b6fd2749.jpg",
-  texture: "/manus-storage/mrt-canvas-constellation-texture_f6acef3f.jpg",
-  reference: "/manus-storage/mrt-route-reference-card_dc71c788.jpg",
+  logo: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663619237894/jQBlTeNNhwPADzZB.png",
+  hero: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663619237894/LqcizDXlrLgPbSFx.jpg",
+  texture: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663619237894/LEtUsohKDWEAJNky.jpg",
+  reference: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663619237894/LEyqoVYchbPRYqTj.jpg",
 };
 const kinds: Record<NodeKind, { label: string; glyph: string }> = {
   start: { label: "開始", glyph: "◇" },
@@ -227,7 +227,7 @@ export default function Home() {
   const outgoing = selected ? tree.edges.filter(([from]) => from === selected.id).map(([, to]) => tree.nodes.find((node) => node.id === to)).filter((node): node is RouteNode => Boolean(node)) : [];
 
   return <main className="min-h-screen app-shell">
-    <header className="topline"><div className="brand"><img src={asset.logo} alt="" /><div><span>ORBITAL ROUTE ATLAS</span><small>TRPG MOVE MAP GENERATOR</small></div></div><a className="topline-open" href="/" target="_blank" rel="noopener noreferrer"><ExternalLink size={15} /> 別タブで開く</a></header>
+    <header className="topline"><div className="brand"><img src={asset.logo} alt="" /><div><span>ORBITAL ROUTE ATLAS</span><small>TRPG MOVE MAP GENERATOR</small></div></div><a className="topline-open" href={import.meta.env.BASE_URL} target="_blank" rel="noopener noreferrer"><ExternalLink size={15} /> 別タブで開く</a></header>
     <section className="hero" style={{ backgroundImage: `linear-gradient(90deg, rgba(8,15,21,.96) 0%, rgba(8,15,21,.72) 54%, rgba(8,15,21,.28)), url(${asset.hero})` }}><div><p className="eyebrow">ROUTE / BRANCH / MERGE</p><h1>アイコンから、次のアイコンへ。</h1><p className="hero-copy">遭遇や報酬は書かない。セッションで必要な移動の選択肢だけを、分岐と合流のツリーにします。</p></div><img className="hero-reference" src={asset.reference} alt="" /></section>
 
     <section className="command-strip" aria-label="ツリー操作"><div className="command-copy"><b>{tree.title}</b><span>{tree.nodes.length} 地点 / {tree.edges.length} 接続</span></div><div className="command-actions"><Button onClick={addNode} className="brass-button"><Plus size={16} /> 地点を追加</Button><Button variant="outline" onClick={() => fileRef.current?.click()}><FileUp size={16} /> 設定を読む</Button><Button variant="outline" onClick={() => { downloadText("orbital-route-atlas.json", JSON.stringify(tree, null, 2), "application/json"); message("ツリー設定を保存しました"); }}><Save size={16} /> 設定を保存</Button><input ref={fileRef} type="file" accept="application/json" className="hidden" onChange={importTree} /></div></section>
