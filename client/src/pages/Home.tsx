@@ -1,4 +1,4 @@
-/* Tactical Celestial Cartography: dark cartographic editor, left utility rail, wide route canvas. */
+/* Orbital Route Atlas: independent celestial cartography with circular compass waypoints and dotted forward routes. */
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight, Download, FileDown, FileUp, Link2, Link2Off, MapPin,
@@ -7,7 +7,7 @@ import {
 import { Button } from "@/components/ui/button";
 
 type NodeKind = "start" | "battle" | "elite" | "event" | "shop" | "rest" | "boss" | "custom";
-type Accent = "brass" | "teal" | "rose" | "violet" | "lime" | "mist";
+type Accent = "brass" | "teal" | "slate";
 type RouteNode = { id: string; stage: number; kind: NodeKind; icon: string; label: string; accent: Accent };
 type RouteTree = {
   title: string;
@@ -16,7 +16,7 @@ type RouteTree = {
   theme: { background: string; line: string; showLabels: boolean; iconSize: number };
 };
 
-const STORAGE_KEY = "mirror-route-tree.v1";
+const STORAGE_KEY = "orbital-route-atlas.v1";
 const asset = {
   logo: "/manus-storage/mrt-logo-mark_848914a2.png",
   hero: "/manus-storage/mrt-hero-route-lattice_b6fd2749.jpg",
@@ -34,19 +34,19 @@ const kinds: Record<NodeKind, { label: string; glyph: string }> = {
   custom: { label: "任意", glyph: "●" },
 };
 const colors: Record<Accent, string> = {
-  brass: "#e7b95e", teal: "#74d5d1", rose: "#ef8586", violet: "#b09ae9", lime: "#b9d882", mist: "#bdc8d2",
+  brass: "#e7b95e", teal: "#74d5d1", slate: "#8fa4ae",
 };
 
 export const baseTree = (): RouteTree => ({
   title: "移動ツリー",
   theme: { background: "#101720", line: "#6e8594", showLabels: false, iconSize: 27 },
   nodes: [
-    { id: "start", stage: 0, kind: "start", icon: "", label: "開始", accent: "brass" },
-    { id: "battle", stage: 1, kind: "battle", icon: "", label: "戦闘", accent: "teal" },
-    { id: "event", stage: 1, kind: "event", icon: "", label: "イベント", accent: "violet" },
-    { id: "elite", stage: 2, kind: "elite", icon: "", label: "精鋭", accent: "rose" },
-    { id: "shop", stage: 2, kind: "shop", icon: "", label: "ショップ", accent: "lime" },
-    { id: "boss", stage: 3, kind: "boss", icon: "", label: "ボス", accent: "brass" },
+    { id: "start", stage: 0, kind: "start", icon: "", label: "開始", accent: "teal" },
+    { id: "battle", stage: 1, kind: "battle", icon: "", label: "戦闘", accent: "slate" },
+    { id: "event", stage: 1, kind: "event", icon: "", label: "イベント", accent: "slate" },
+    { id: "elite", stage: 2, kind: "elite", icon: "", label: "精鋭", accent: "slate" },
+    { id: "shop", stage: 2, kind: "shop", icon: "", label: "ショップ", accent: "slate" },
+    { id: "boss", stage: 3, kind: "boss", icon: "", label: "ボス", accent: "teal" },
   ],
   edges: [["start", "battle"], ["start", "event"], ["battle", "elite"], ["battle", "shop"], ["event", "elite"], ["event", "shop"], ["elite", "boss"], ["shop", "boss"]],
 });
@@ -116,8 +116,8 @@ export function layoutFor(tree: RouteTree) {
   return { width, height, positions, columns };
 }
 
-function hexagon(x: number, y: number, radius = 35) {
-  return [[x - radius * .72, y - radius], [x + radius * .72, y - radius], [x + radius * 1.12, y], [x + radius * .72, y + radius], [x - radius * .72, y + radius], [x - radius * 1.12, y]].map((point) => point.join(",")).join(" ");
+function waypointTicks(x: number, y: number) {
+  return `M ${x} ${y - 47} v 10 M ${x + 47} ${y} h -10 M ${x} ${y + 47} v -10 M ${x - 47} ${y} h 10`;
 }
 
 export function buildSvg(tree: RouteTree) {
@@ -125,12 +125,12 @@ export function buildSvg(tree: RouteTree) {
   const paths = tree.edges.map(([from, to]) => {
     const a = positions[from]; const b = positions[to]; if (!a || !b) return "";
     const bend = Math.max(46, (b.x - a.x) * .47);
-    return `<path d="M ${a.x + 42} ${a.y} C ${a.x + bend} ${a.y}, ${b.x - bend} ${b.y}, ${b.x - 42} ${b.y}" fill="none" stroke="${escapeXml(tree.theme.line)}" stroke-width="3" stroke-linecap="round" marker-end="url(#arrow)"/>`;
+    return `<path d="M ${a.x + 47} ${a.y} C ${a.x + bend} ${a.y}, ${b.x - bend} ${b.y}, ${b.x - 47} ${b.y}" fill="none" stroke="${escapeXml(tree.theme.line)}" stroke-width="3" stroke-linecap="round" stroke-dasharray="8 7" marker-end="url(#arrow)"/>`;
   }).join("");
   const nodes = tree.nodes.map((node) => {
     const p = positions[node.id]; if (!p) return "";
     const label = tree.theme.showLabels ? `<text x="${p.x}" y="${p.y + 61}" text-anchor="middle" fill="#eef5f7" font-family="Noto Sans JP, sans-serif" font-size="14">${escapeXml(node.label)}</text>` : "";
-    return `<g><polygon points="${hexagon(p.x, p.y)}" fill="#202d36" stroke="${colors[node.accent]}" stroke-width="3"/><text x="${p.x}" y="${p.y + tree.theme.iconSize * .34}" text-anchor="middle" fill="${colors[node.accent]}" font-family="sans-serif" font-size="${tree.theme.iconSize}">${escapeXml(glyph(node))}</text>${label}</g>`;
+    return `<g><circle cx="${p.x}" cy="${p.y}" r="39" fill="#202d36" stroke="${colors[node.accent]}" stroke-width="3"/><circle cx="${p.x}" cy="${p.y}" r="29" fill="none" stroke="${colors[node.accent]}" stroke-opacity=".32"/><path d="${waypointTicks(p.x, p.y)}" fill="none" stroke="${colors[node.accent]}" stroke-width="2" stroke-linecap="round"/><text x="${p.x}" y="${p.y + tree.theme.iconSize * .34}" text-anchor="middle" fill="${colors[node.accent]}" font-family="sans-serif" font-size="${tree.theme.iconSize}">${escapeXml(glyph(node))}</text>${label}</g>`;
   }).join("");
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="${escapeXml(tree.theme.line)}"/></marker></defs><rect width="100%" height="100%" rx="18" fill="${escapeXml(tree.theme.background)}"/>${paths}${nodes}</svg>`;
 }
@@ -147,10 +147,12 @@ function RouteCanvas({ tree, selectedId, connectingFrom, onNodeClick }: { tree: 
     <defs><marker id="route-arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill={tree.theme.line} /></marker></defs>
     <rect width="100%" height="100%" rx="18" fill={tree.theme.background} />
     {columns.map((_, index) => <line key={index} x1={94 + index * 220} x2={94 + index * 220} y1="38" y2={height - 38} className="stage-guide" />)}
-    {tree.edges.map(([from, to]) => { const a = positions[from]; const b = positions[to]; if (!a || !b) return null; const bend = Math.max(46, (b.x - a.x) * .47); const active = connectingFrom === from || connectingFrom === to; return <path key={`${from}_${to}`} d={`M ${a.x + 42} ${a.y} C ${a.x + bend} ${a.y}, ${b.x - bend} ${b.y}, ${b.x - 42} ${b.y}`} fill="none" stroke={active ? "#e7b95e" : tree.theme.line} strokeWidth={active ? 4 : 3} strokeLinecap="round" markerEnd="url(#route-arrow)" />; })}
-    {tree.nodes.map((node) => { const p = positions[node.id]; const selected = selectedId === node.id; const origin = connectingFrom === node.id; return <g key={node.id} className={`route-node ${selected ? "is-selected" : ""} ${origin ? "is-origin" : ""}`} role="button" tabIndex={0} aria-label={`${node.label}を選択`} onClick={() => onNodeClick(node.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onNodeClick(node.id); } }}>
-      <polygon points={hexagon(p.x, p.y)} fill="#202d36" stroke={colors[node.accent]} strokeWidth={selected || origin ? 5 : 3} />
-      <text x={p.x} y={p.y + tree.theme.iconSize * .34} textAnchor="middle" fill={colors[node.accent]} fontSize={tree.theme.iconSize}>{glyph(node)}</text>
+    {tree.edges.map(([from, to]) => { const a = positions[from]; const b = positions[to]; if (!a || !b) return null; const bend = Math.max(46, (b.x - a.x) * .47); const active = connectingFrom === from || connectingFrom === to; return <path key={`${from}_${to}`} d={`M ${a.x + 47} ${a.y} C ${a.x + bend} ${a.y}, ${b.x - bend} ${b.y}, ${b.x - 47} ${b.y}`} fill="none" stroke={active ? "#e7b95e" : tree.theme.line} strokeWidth={active ? 4 : 3} strokeLinecap="round" strokeDasharray="8 7" markerEnd="url(#route-arrow)" />; })}
+    {tree.nodes.map((node) => { const p = positions[node.id]; const selected = selectedId === node.id; const origin = connectingFrom === node.id; const mark = selected || origin ? colors.brass : colors[node.accent]; return <g key={node.id} className={`route-node ${selected ? "is-selected" : ""} ${origin ? "is-origin" : ""}`} role="button" tabIndex={0} aria-label={`${node.label}を選択`} onClick={() => onNodeClick(node.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onNodeClick(node.id); } }}>
+      <circle cx={p.x} cy={p.y} r="39" fill="#202d36" stroke={mark} strokeWidth={selected || origin ? 5 : 3} />
+      <circle cx={p.x} cy={p.y} r="29" fill="none" stroke={mark} strokeOpacity=".32" />
+      <path d={waypointTicks(p.x, p.y)} fill="none" stroke={mark} strokeWidth="2" strokeLinecap="round" />
+      <text x={p.x} y={p.y + tree.theme.iconSize * .34} textAnchor="middle" fill={mark} fontSize={tree.theme.iconSize}>{glyph(node)}</text>
       {tree.theme.showLabels && <text x={p.x} y={p.y + 61} textAnchor="middle" fill="#eef5f7" fontSize="14">{node.label}</text>}
     </g>; })}
   </svg></div>;
@@ -168,7 +170,7 @@ export default function Home() {
   const message = (text: string) => { setNotice(text); window.setTimeout(() => setNotice(""), 2600); };
   const mutate = (action: (draft: RouteTree) => void) => setTree((previous) => { const next = clone(previous); action(next); return normalize(next); });
   const updateNode = (patch: Partial<RouteNode>) => { if (!selected) return; mutate((draft) => { const node = draft.nodes.find((item) => item.id === selected.id); if (node) Object.assign(node, patch); }); };
-  const addNode = () => { const node: RouteNode = { id: uuid(), stage: Math.min((selected?.stage ?? layout.columns.length - 1) + 1, 20), kind: "custom", icon: "●", label: "新しい地点", accent: "mist" }; mutate((draft) => draft.nodes.push(node)); setSelectedId(node.id); setConnectingFrom(""); message("地点を追加しました"); };
+  const addNode = () => { const node: RouteNode = { id: uuid(), stage: Math.min((selected?.stage ?? layout.columns.length - 1) + 1, 20), kind: "custom", icon: "●", label: "新しい地点", accent: "slate" }; mutate((draft) => draft.nodes.push(node)); setSelectedId(node.id); setConnectingFrom(""); message("地点を追加しました"); };
   const removeNode = () => { if (!selected || tree.nodes.length <= 1) return; mutate((draft) => { draft.nodes = draft.nodes.filter((node) => node.id !== selected.id); draft.edges = draft.edges.filter(([from, to]) => from !== selected.id && to !== selected.id); }); setSelectedId(tree.nodes.find((node) => node.id !== selected.id)?.id ?? ""); setConnectingFrom(""); message("地点を削除しました"); };
   const reset = () => { if (!confirm("移動ツリーを初期テンプレートへ戻しますか？")) return; setTree(baseTree()); setSelectedId("start"); setConnectingFrom(""); message("初期テンプレートへ戻しました"); };
   const onNodeClick = (targetId: string) => {
@@ -181,17 +183,17 @@ export default function Home() {
   };
   const exportPng = () => {
     const svg = buildSvg(tree); const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml;charset=utf-8" })); const image = new Image();
-    image.onload = () => { const { width, height } = layoutFor(tree); const canvas = document.createElement("canvas"); canvas.width = width * 2; canvas.height = height * 2; const context = canvas.getContext("2d"); context?.drawImage(image, 0, 0, canvas.width, canvas.height); URL.revokeObjectURL(url); canvas.toBlob((blob) => { if (!blob) return; const png = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = png; link.download = "mirror-route-tree.png"; link.click(); setTimeout(() => URL.revokeObjectURL(png), 1000); message("PNGを保存しました"); }, "image/png"); };
+    image.onload = () => { const { width, height } = layoutFor(tree); const canvas = document.createElement("canvas"); canvas.width = width * 2; canvas.height = height * 2; const context = canvas.getContext("2d"); context?.drawImage(image, 0, 0, canvas.width, canvas.height); URL.revokeObjectURL(url); canvas.toBlob((blob) => { if (!blob) return; const png = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = png; link.download = "orbital-route-atlas.png"; link.click(); setTimeout(() => URL.revokeObjectURL(png), 1000); message("PNGを保存しました"); }, "image/png"); };
     image.src = url;
   };
   const importTree = (event: React.ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = () => { try { const next = normalize(JSON.parse(String(reader.result))); setTree(next); setSelectedId(next.nodes[0]?.id ?? ""); setConnectingFrom(""); message("ツリー設定を読み込みました"); } catch { message("ツリー設定を読み込めませんでした"); } }; reader.readAsText(file); event.target.value = ""; };
   const outgoing = selected ? tree.edges.filter(([from]) => from === selected.id).map(([, to]) => tree.nodes.find((node) => node.id === to)).filter((node): node is RouteNode => Boolean(node)) : [];
 
   return <main className="min-h-screen app-shell">
-    <header className="topline"><div className="brand"><img src={asset.logo} alt="" /><div><span>MIRROR ROUTE TREE</span><small>TRPG MOVE MAP GENERATOR</small></div></div><div className="topline-note"><MapPin size={15} /> 移動だけを記録する</div></header>
+    <header className="topline"><div className="brand"><img src={asset.logo} alt="" /><div><span>ORBITAL ROUTE ATLAS</span><small>TRPG MOVE MAP GENERATOR</small></div></div><div className="topline-note"><MapPin size={15} /> 移動だけを記録する</div></header>
     <section className="hero" style={{ backgroundImage: `linear-gradient(90deg, rgba(8,15,21,.96) 0%, rgba(8,15,21,.72) 54%, rgba(8,15,21,.28)), url(${asset.hero})` }}><div><p className="eyebrow">ROUTE / BRANCH / MERGE</p><h1>アイコンから、次のアイコンへ。</h1><p className="hero-copy">遭遇や報酬は書かない。セッションで必要な移動の選択肢だけを、分岐と合流のツリーにします。</p></div><img className="hero-reference" src={asset.reference} alt="" /></section>
 
-    <section className="command-strip" aria-label="ツリー操作"><div className="command-copy"><b>{tree.title}</b><span>{tree.nodes.length} 地点 / {tree.edges.length} 接続</span></div><div className="command-actions"><Button onClick={addNode} className="brass-button"><Plus size={16} /> 地点を追加</Button><Button variant="outline" onClick={() => fileRef.current?.click()}><FileUp size={16} /> 設定を読む</Button><Button variant="outline" onClick={() => { downloadText("mirror-route-tree.json", JSON.stringify(tree, null, 2), "application/json"); message("ツリー設定を保存しました"); }}><Save size={16} /> 設定を保存</Button><input ref={fileRef} type="file" accept="application/json" className="hidden" onChange={importTree} /></div></section>
+    <section className="command-strip" aria-label="ツリー操作"><div className="command-copy"><b>{tree.title}</b><span>{tree.nodes.length} 地点 / {tree.edges.length} 接続</span></div><div className="command-actions"><Button onClick={addNode} className="brass-button"><Plus size={16} /> 地点を追加</Button><Button variant="outline" onClick={() => fileRef.current?.click()}><FileUp size={16} /> 設定を読む</Button><Button variant="outline" onClick={() => { downloadText("orbital-route-atlas.json", JSON.stringify(tree, null, 2), "application/json"); message("ツリー設定を保存しました"); }}><Save size={16} /> 設定を保存</Button><input ref={fileRef} type="file" accept="application/json" className="hidden" onChange={importTree} /></div></section>
 
     <section className="workspace">
       <aside className="editor-rail"><div className="rail-title"><div><p className="eyebrow">NODE EDITOR</p><h2>地点の編集</h2></div><span>列 {selected.stage + 1}</span></div>
@@ -207,7 +209,7 @@ export default function Home() {
         <Button variant="ghost" className="danger-button" onClick={removeNode}><Trash2 size={16} /> この地点を削除</Button>
       </aside>
 
-      <article className="canvas-panel" style={{ backgroundImage: `linear-gradient(rgba(13,20,27,.88), rgba(13,20,27,.94)), url(${asset.texture})` }}><header className="canvas-head"><div><p className="eyebrow">ROUTE CANVAS</p><h2>移動ツリー</h2><span>アイコンを選んで編集。接続中は右側の地点を押す。</span></div><div className="export-actions"><Button variant="outline" onClick={() => { downloadText("mirror-route-tree.svg", buildSvg(tree), "image/svg+xml;charset=utf-8"); message("SVGを保存しました"); }}><Download size={16} /> SVG</Button><Button className="brass-button" onClick={exportPng}><FileDown size={16} /> PNG</Button></div></header>
+      <article className="canvas-panel" style={{ backgroundImage: `linear-gradient(rgba(13,20,27,.88), rgba(13,20,27,.94)), url(${asset.texture})` }}><header className="canvas-head"><div><p className="eyebrow">ORBITAL CANVAS</p><h2>移動ツリー</h2><span>アイコンを選んで編集。接続中は右側の地点を押す。</span></div><div className="export-actions"><Button variant="outline" onClick={() => { downloadText("orbital-route-atlas.svg", buildSvg(tree), "image/svg+xml;charset=utf-8"); message("SVGを保存しました"); }}><Download size={16} /> SVG</Button><Button className="brass-button" onClick={exportPng}><FileDown size={16} /> PNG</Button></div></header>
         {connectingFrom && <div className="connect-notice"><ArrowRight size={16} /> 接続中：{tree.nodes.find((node) => node.id === connectingFrom)?.label} から、右側の地点を選択</div>}
         <RouteCanvas tree={tree} selectedId={selected.id} connectingFrom={connectingFrom} onNodeClick={onNodeClick} />
         <footer className="canvas-footer"><span>分岐と合流はどちらも作成できます。</span><Button variant="ghost" size="sm" onClick={reset}><RotateCcw size={15} /> 初期形に戻す</Button></footer>
