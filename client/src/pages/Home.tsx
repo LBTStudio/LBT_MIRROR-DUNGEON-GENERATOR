@@ -20,8 +20,9 @@ const STORAGE_KEY = "orbital-route-atlas.v2";
 const MAX_COLUMNS = 10;
 const MAX_NODES_PER_COLUMN = 3;
 const HISTORY_LIMIT = 80;
-const STANDARD_THEME = { background: "#16090c", line: "#9c3142" };
+const STANDARD_THEME = { background: "#07171b", line: "#70d9df" };
 const LEGACY_STANDARD_THEME = { background: "#101720", line: "#6e8594" };
+const DANTE_STANDARD_THEME = { background: "#16090c", line: "#9c3142" };
 const asset = {
   logo: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663619237894/jQBlTeNNhwPADzZB.png",
   hero: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663619237894/LqcizDXlrLgPbSFx.jpg",
@@ -41,7 +42,7 @@ const kinds: Record<NodeKind, { label: string; short: string; description: strin
   guardian: { label: "終端警戒", short: "終", description: "区間の終端・強敵" },
   custom: { label: "任意", short: "任", description: "自由に設定する地点" },
 };
-const colors: Record<Accent, string> = { gold: "#c99a42", ember: "#b01c37", ash: "#786b68" };
+const colors: Record<Accent, string> = { gold: "#d7ad54", ember: "#ef4d52", ash: "#6ed6dc" };
 const legacyAccents: Record<string, Accent> = { brass: "gold", teal: "ember", slate: "ash" };
 const legacyKinds: Record<string, NodeKind> = { start: "origin", battle: "skirmish", elite: "elite", event: "event", shop: "supply", rest: "rest", boss: "guardian", custom: "custom" };
 
@@ -66,8 +67,7 @@ function clone<T>(value: T): T { return JSON.parse(JSON.stringify(value)); }
 function uuid() { return globalThis.crypto?.randomUUID?.() ?? `node_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`; }
 function escapeXml(value: unknown) { return String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;"); }
 export function defaultAccent(kind: NodeKind): Accent {
-  if (kind === "origin" || kind === "supply" || kind === "guardian") return "gold";
-  if (kind === "focused" || kind === "elite" || kind === "anomaly" || kind === "event") return "ember";
+  if (kind === "elite" || kind === "anomaly" || kind === "guardian") return "ember";
   return "ash";
 }
 function nodeSeed(stage: number, index = 0): RouteNode {
@@ -95,15 +95,15 @@ function ensureColumns(nodes: RouteNode[]) {
 }
 
 export const baseTree = (): RouteTree => {
-  const origin = { id: "origin", stage: 0, kind: "origin" as NodeKind, icon: "", label: "起点", accent: "gold" as Accent };
+  const origin = { id: "origin", stage: 0, kind: "origin" as NodeKind, icon: "", label: "起点", accent: "ash" as Accent };
   const nodes: RouteNode[] = [
     origin,
     { id: "skirmish", stage: 1, kind: "skirmish", icon: "", label: "小規模交戦", accent: "ash" },
-    { id: "event", stage: 1, kind: "event", icon: "", label: "分岐事象", accent: "ember" },
-    { id: "focused", stage: 2, kind: "focused", icon: "", label: "正面衝突", accent: "ember" },
+    { id: "event", stage: 1, kind: "event", icon: "", label: "分岐事象", accent: "ash" },
+    { id: "focused", stage: 2, kind: "focused", icon: "", label: "正面衝突", accent: "ash" },
     { id: "elite", stage: 2, kind: "elite", icon: "", label: "危険交戦", accent: "ember" },
-    { id: "supply", stage: 3, kind: "supply", icon: "", label: "補給所", accent: "gold" },
-    { id: "guardian", stage: 4, kind: "guardian", icon: "", label: "終端警戒", accent: "gold" },
+    { id: "supply", stage: 3, kind: "supply", icon: "", label: "補給所", accent: "ash" },
+    { id: "guardian", stage: 4, kind: "guardian", icon: "", label: "終端警戒", accent: "ember" },
   ];
   return { title: "移動ツリー", nodes, edges: deriveEdges(nodes), theme: { background: STANDARD_THEME.background, line: STANDARD_THEME.line, showLabels: false, iconSize: 27 } };
 };
@@ -127,8 +127,8 @@ export function normalize(input: unknown): RouteTree {
     nodes: prepared,
     edges: deriveEdges(prepared),
     theme: {
-      background: source.theme?.background === LEGACY_STANDARD_THEME.background ? STANDARD_THEME.background : typeof source.theme?.background === "string" ? source.theme.background : fallback.theme.background,
-      line: source.theme?.line === LEGACY_STANDARD_THEME.line ? STANDARD_THEME.line : typeof source.theme?.line === "string" ? source.theme.line : fallback.theme.line,
+      background: source.theme?.background === LEGACY_STANDARD_THEME.background || source.theme?.background === DANTE_STANDARD_THEME.background ? STANDARD_THEME.background : typeof source.theme?.background === "string" ? source.theme.background : fallback.theme.background,
+      line: source.theme?.line === LEGACY_STANDARD_THEME.line || source.theme?.line === DANTE_STANDARD_THEME.line ? STANDARD_THEME.line : typeof source.theme?.line === "string" ? source.theme.line : fallback.theme.line,
       showLabels: Boolean(source.theme?.showLabels),
       iconSize: Math.max(18, Math.min(42, Number(source.theme?.iconSize) || fallback.theme.iconSize)),
     },
@@ -204,15 +204,16 @@ export function buildSvg(tree: RouteTree) {
   const paths = tree.edges.map(([from, to]) => {
     const a = positions[from]; const b = positions[to]; if (!a || !b) return "";
     const bend = Math.max(46, (b.x - a.x) * .47);
-    return `<path d="M ${a.x + 47} ${a.y} C ${a.x + bend} ${a.y}, ${b.x - bend} ${b.y}, ${b.x - 47} ${b.y}" fill="none" stroke="${escapeXml(tree.theme.line)}" stroke-width="3" stroke-linecap="round" stroke-dasharray="8 7" marker-end="url(#arrow)"/>`;
+    const d = `M ${a.x + 47} ${a.y} C ${a.x + bend} ${a.y}, ${b.x - bend} ${b.y}, ${b.x - 47} ${b.y}`;
+    return `<path d="${d}" fill="none" stroke="${escapeXml(tree.theme.line)}" stroke-opacity=".18" stroke-width="8" stroke-linecap="round"/><path d="${d}" fill="none" stroke="${escapeXml(tree.theme.line)}" stroke-width="2.6" stroke-linecap="round"/>`;
   }).join("");
   const nodes = tree.nodes.map((node) => {
     const p = positions[node.id]; if (!p) return "";
     const color = colors[node.accent];
     const label = tree.theme.showLabels ? `<text x="${p.x}" y="${p.y + 61}" text-anchor="middle" fill="#eef5f7" font-family="Noto Sans JP, sans-serif" font-size="14">${escapeXml(node.label)}</text>` : "";
-    return `<g><circle cx="${p.x}" cy="${p.y}" r="39" fill="#202d36" stroke="${color}" stroke-width="3"/><circle cx="${p.x}" cy="${p.y}" r="29" fill="none" stroke="${color}" stroke-opacity=".32"/><path d="${waypointTicks(p.x, p.y)}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round"/><g transform="translate(${p.x} ${p.y})">${markerSvg(node.kind, color, node.icon)}</g>${label}</g>`;
+    return `<g><circle cx="${p.x}" cy="${p.y}" r="39" fill="#09252a" stroke="${color}" stroke-width="3"/><circle cx="${p.x}" cy="${p.y}" r="29" fill="none" stroke="${color}" stroke-opacity=".36"/><path d="${waypointTicks(p.x, p.y)}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round"/><g transform="translate(${p.x} ${p.y})">${markerSvg(node.kind, color, node.icon)}</g>${label}</g>`;
   }).join("");
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="${escapeXml(tree.theme.line)}"/></marker></defs><rect width="100%" height="100%" rx="18" fill="${escapeXml(tree.theme.background)}"/>${paths}${nodes}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><rect width="100%" height="100%" rx="18" fill="${escapeXml(tree.theme.background)}"/>${paths}${nodes}</svg>`;
 }
 
 function downloadText(filename: string, body: string, type: string) {
@@ -267,12 +268,11 @@ function RouteCanvas({ tree, selectedId, onNodeClick }: { tree: RouteTree; selec
   };
   return <div className="canvas-scroll" ref={viewportRef} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp} onWheel={(event) => { if (!event.ctrlKey && !event.metaKey) return; event.preventDefault(); changeZoom(event.deltaY > 0 ? -.08 : .08); }}>
     <div className="canvas-transform" style={{ width, height, left: `calc(50% - ${width / 2}px)`, top: `calc(50% - ${height / 2}px)`, transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }}><svg className="route-svg" width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="img" aria-label="左から右へ進む移動ツリーのプレビュー">
-      <defs><marker id="route-arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill={tree.theme.line} /></marker></defs>
       <rect width="100%" height="100%" rx="18" fill={tree.theme.background} />
       {columns.map((_, index) => <line key={index} x1={94 + index * 220} x2={94 + index * 220} y1="38" y2={height - 38} className="stage-guide" />)}
-      {tree.edges.map(([from, to]) => { const a = positions[from]; const b = positions[to]; if (!a || !b) return null; const bend = Math.max(46, (b.x - a.x) * .47); return <path key={`${from}_${to}`} d={`M ${a.x + 47} ${a.y} C ${a.x + bend} ${a.y}, ${b.x - bend} ${b.y}, ${b.x - 47} ${b.y}`} fill="none" stroke={tree.theme.line} strokeWidth="3" strokeLinecap="round" strokeDasharray="8 7" markerEnd="url(#route-arrow)" />; })}
+      {tree.edges.map(([from, to]) => { const a = positions[from]; const b = positions[to]; if (!a || !b) return null; const bend = Math.max(46, (b.x - a.x) * .47); const d = `M ${a.x + 47} ${a.y} C ${a.x + bend} ${a.y}, ${b.x - bend} ${b.y}, ${b.x - 47} ${b.y}`; return <g key={`${from}_${to}`}><path d={d} fill="none" stroke={tree.theme.line} strokeOpacity=".18" strokeWidth="8" strokeLinecap="round" /><path d={d} fill="none" stroke={tree.theme.line} strokeWidth="2.6" strokeLinecap="round" /></g>; })}
       {tree.nodes.map((node) => { const p = positions[node.id]; const selected = selectedId === node.id; const mark = selected ? colors.gold : colors[node.accent]; return <g key={node.id} transform={`translate(${p.x} ${p.y})`} className={`route-node ${selected ? "is-selected" : ""}`} role="button" tabIndex={0} aria-label={`${node.label}を選択`} onClick={() => { if (!suppressClickRef.current) onNodeClick(node.id); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onNodeClick(node.id); } }}>
-        <circle r="39" fill="#202d36" stroke={mark} strokeWidth={selected ? 5 : 3} />
+        <circle r="39" fill="#09252a" stroke={mark} strokeWidth={selected ? 5 : 3} />
         <circle r="29" fill="none" stroke={mark} strokeOpacity=".32" />
         <path d="M 0 -47 v 10 M 47 0 h -10 M 0 47 v -10 M -47 0 h 10" fill="none" stroke={mark} strokeWidth="2" strokeLinecap="round" />
         <NodeMark node={node} color={mark} />

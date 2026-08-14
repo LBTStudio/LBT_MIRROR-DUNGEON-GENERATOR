@@ -3,16 +3,19 @@ import { baseTree, buildSvg, changeNodeKind, createTreeHistory, defaultAccent, l
 
 const base = baseTree();
 assert.equal(base.nodes.length, 7, "初期ツリーは7地点");
-assert.equal(base.theme.background, "#16090c", "初期背景は黒を基調にする");
-assert.equal(base.theme.line, "#9c3142", "初期経路は深紅を基調にする");
-assert.equal(defaultAccent("guardian"), "gold", "終端警戒は古金の役割色にする");
+assert.equal(base.theme.background, "#07171b", "初期背景は青緑の暗部を基調にする");
+assert.equal(base.theme.line, "#70d9df", "初期経路は青緑の実線を基調にする");
+assert.equal(defaultAccent("guardian"), "ember", "終端警戒は朱赤の警戒色にする");
 assert.equal(defaultAccent("elite"), "ember", "危険交戦は深紅の役割色にする");
 assert.ok(markerPaths.skirmish.some((path) => path.endsWith("Z")), "小規模交戦は向かい合う測量旗の閉じた輪郭を持つ");
 assert.ok(markerPaths.anomaly.some((path) => path.includes("A 18 18")), "特異事象は分断された測量アークを持つ");
 assert.ok(markerPaths.guardian.some((path) => path.includes("V 15")), "終端警戒は終端ゲートの垂直標を持つ");
 const migratedTheme = normalize({ nodes: base.nodes, theme: { background: "#101720", line: "#6e8594", showLabels: false, iconSize: 27 } });
-assert.equal(migratedTheme.theme.background, "#16090c", "旧標準背景は新しい黒の初期テーマへ移行する");
-assert.equal(migratedTheme.theme.line, "#9c3142", "旧標準経路色は新しい深紅の初期テーマへ移行する");
+assert.equal(migratedTheme.theme.background, "#07171b", "旧標準背景は新しい青緑の地図テーマへ移行する");
+assert.equal(migratedTheme.theme.line, "#70d9df", "旧標準経路色は新しい青緑の地図テーマへ移行する");
+const danteMigratedTheme = normalize({ nodes: base.nodes, theme: { background: "#16090c", line: "#9c3142", showLabels: false, iconSize: 27 } });
+assert.equal(danteMigratedTheme.theme.background, "#07171b", "直前の標準背景は地図テーマへ移行する");
+assert.equal(danteMigratedTheme.theme.line, "#70d9df", "直前の標準経路色は地図テーマへ移行する");
 assert.equal(base.edges.length, 9, "初期テンプレートは列間の自動接続を9本生成する");
 
 const byId = new Map(base.nodes.map((node) => [node.id, node]));
@@ -47,7 +50,8 @@ const layout = layoutFor(customTree);
 assert.ok(layout.width >= 820 && layout.height >= 420, "画像出力に必要なキャンバス寸法を確保する");
 const svg = buildSvg(customTree);
 assert.ok(svg.includes("◆"), "任意アイコンをSVGへ出力する");
-assert.ok(svg.includes("marker"), "SVGに進行方向の矢印を含める");
+assert.equal(svg.includes("marker"), false, "SVGは模倣的な矢印を使わない");
+assert.ok(svg.includes("stroke-opacity=\".18\""), "SVGは青緑の二重航路線を含める");
 assert.ok(svg.includes("<path"), "SVGに独自の航路と地点記号を含める");
 
 const historyStart = createTreeHistory(base);
