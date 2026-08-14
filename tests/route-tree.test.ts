@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { baseTree, buildSvg, changeNodeKind, createTreeHistory, defaultAccent, layoutFor, markerPaths, normalize, recordTreeChange, redoTreeHistory, undoTreeHistory } from "../client/src/pages/Home";
+import { baseTree, buildSvg, changeNodeKind, createTreeHistory, defaultAccent, encounterIconSources, layoutFor, normalize, recordTreeChange, redoTreeHistory, undoTreeHistory } from "../client/src/pages/Home";
 
 const base = baseTree();
 assert.equal(base.nodes.length, 9, "初期ツリーは全主要種別を例示する9地点");
@@ -7,10 +7,10 @@ assert.equal(base.theme.background, "#07171b", "初期背景は青緑の暗部�
 assert.equal(base.theme.line, "#70d9df", "初期経路は青緑の実線を基調にする");
 assert.equal(defaultAccent("guardian"), "ember", "終端警戒は朱赤の警戒色にする");
 assert.equal(defaultAccent("elite"), "ember", "危険交戦は深紅の役割色にする");
-for (const [kind, paths] of Object.entries(markerPaths)) assert.ok(paths.length >= 3, `${kind}は独自の測量記号を持つ`);
-assert.ok(markerPaths.skirmish.some((path) => path.endsWith("Z")), "通常遭遇は対向する閉鎖測量枠を持つ");
-assert.ok(markerPaths.anomaly.some((path) => path.includes("A 18 18")), "変則点は分断された測量アークを持つ");
-assert.ok(markerPaths.guardian.some((path) => path.includes("V 15")), "終端点は終端ゲートの垂直標を持つ");
+assert.equal(Object.keys(encounterIconSources).length, 9, "9種別すべてに参照アイコンを割り当てる");
+assert.ok(encounterIconSources.skirmish.includes("Normal_Encounter_Icon"), "通常戦闘は通常遭遇アイコンを使う");
+assert.ok(encounterIconSources.event.includes("Event_Encounter_Icon"), "イベントは疑問符の遭遇アイコンを使う");
+assert.ok(encounterIconSources.guardian.includes("Boss_Encounter_Icon"), "終端ボスはボス遭遇アイコンを使う");
 const migratedTheme = normalize({ nodes: base.nodes, theme: { background: "#101720", line: "#6e8594", showLabels: false, iconSize: 27 } });
 assert.equal(migratedTheme.theme.background, "#07171b", "旧標準背景は新しい青緑の地図テーマへ移行する");
 assert.equal(migratedTheme.theme.line, "#70d9df", "旧標準経路色は新しい青緑の地図テーマへ移行する");
@@ -43,7 +43,7 @@ assert.equal(legacyTree.nodes.find((node) => node.id === "battle")?.kind, "skirm
 const defaultNamedSkirmish = base.nodes.find((node) => node.id === "skirmish")!;
 const switchedKind = changeNodeKind(defaultNamedSkirmish, "anomaly");
 assert.equal(switchedKind.kind, "anomaly", "地点種別は一度の変更で更新する");
-assert.equal(switchedKind.label, "変則点", "既定名称の地点は種別変更に合わせて名称も更新する");
+assert.equal(switchedKind.label, "変則遭遇", "既定名称の地点は種別変更に合わせて名称も更新する");
 const namedNode = changeNodeKind({ ...defaultNamedSkirmish, label: "見張り台" }, "focused");
 assert.equal(namedNode.label, "見張り台", "利用者が入力した名称は種別変更で上書きしない");
 
@@ -53,7 +53,8 @@ const svg = buildSvg(customTree);
 assert.ok(svg.includes("◆"), "任意アイコンをSVGへ出力する");
 assert.equal(svg.includes("marker"), false, "SVGは模倣的な矢印を使わない");
 assert.ok(svg.includes("stroke-opacity=\".18\""), "SVGは青緑の二重航路線を含める");
-assert.ok(svg.includes("<path"), "SVGに独自の航路と地点記号を含める");
+assert.ok(svg.includes("<image"), "SVGに参照アイコンを含める");
+assert.ok(svg.includes("Normal_Encounter_Icon"), "SVGに通常戦闘アイコンを含める");
 
 const historyStart = createTreeHistory(base);
 const historyOne = recordTreeChange(historyStart, { ...base, title: "一手目" });

@@ -1,4 +1,4 @@
-/* Orbital Route Atlas: independent celestial cartography. The route schema is a simple left-to-right instrument, with original compass marks rather than source-game assets. */
+/* Orbital Route Atlas: left-to-right route cartography using the user-authorized reference encounter icon set, rendered inside a compact hex waypoint frame. */
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronRight, Crosshair, Download, ExternalLink, FileDown, FileUp, Maximize2,
@@ -30,44 +30,48 @@ const asset = {
   reference: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663619237894/LEyqoVYchbPRYqTj.jpg",
 };
 
+export const encounterIconSources: Record<Exclude<NodeKind, "custom">, string> = {
+  origin: "/manus-storage/Dungeon_Entrance_Icon_3c3c7f17.png",
+  skirmish: "/manus-storage/Normal_Encounter_Icon_ac411f79.png",
+  focused: "/manus-storage/Monster_Encounter_Icon_2a9cacfe.png",
+  elite: "/manus-storage/Coin_Encounter_Icon_86e6f39b.png",
+  anomaly: "/manus-storage/Blubbering_Toad_Core_Icon_4b00b351.png",
+  event: "/manus-storage/Event_Encounter_Icon_57c7965b.png",
+  supply: "/manus-storage/Shop_Encounter_Icon_bbd20be7.png",
+  rest: "/manus-storage/Rest_Stop_Encounter_Icon_c8e1da99.png",
+  guardian: "/manus-storage/Boss_Encounter_Icon_2663c108.png",
+};
+
 const kinds: Record<NodeKind, { label: string; short: string; description: string }> = {
-  origin: { label: "起点", short: "起", description: "経路の出発地点" },
-  skirmish: { label: "通過点", short: "通", description: "標準的に通過する経路地点" },
-  focused: { label: "収束点", short: "収", description: "経路が集中する重要地点" },
-  elite: { label: "危険点", short: "危", description: "注意を要する高危険の地点" },
-  anomaly: { label: "変則点", short: "変", description: "通常規則から外れる特殊地点" },
-  event: { label: "分岐点", short: "分", description: "選択によって進行が変わる地点" },
-  supply: { label: "補給点", short: "補", description: "補給・整備を行う管理地点" },
-  rest: { label: "休止点", short: "休", description: "一時停止して整える地点" },
-  guardian: { label: "終端点", short: "終", description: "区間の到達目標となる地点" },
+  origin: { label: "開始", short: "始", description: "経路の出発地点" },
+  skirmish: { label: "通常戦闘", short: "戦", description: "通常の敵と交戦する地点" },
+  focused: { label: "強敵", short: "強", description: "強力な敵と集中して交戦する地点" },
+  elite: { label: "危険戦闘", short: "危", description: "危険度が高い連続戦闘の地点" },
+  anomaly: { label: "変則遭遇", short: "変", description: "通常と異なる特殊な遭遇地点" },
+  event: { label: "イベント", short: "？", description: "内容が未確定、または選択を伴う地点" },
+  supply: { label: "補給所", short: "補", description: "補給・整備を行う地点" },
+  rest: { label: "休息所", short: "休", description: "休息して立て直す地点" },
+  guardian: { label: "終端ボス", short: "終", description: "区間の最後に待つ高難度の地点" },
   custom: { label: "任意", short: "任", description: "自由に設定する地点" },
 };
 const colors: Record<Accent, string> = { gold: "#d7ad54", ember: "#ef4d52", ash: "#6ed6dc" };
 const legacyAccents: Record<string, Accent> = { brass: "gold", teal: "ember", slate: "ash" };
 const legacyKinds: Record<string, NodeKind> = { start: "origin", battle: "skirmish", elite: "elite", event: "event", shop: "supply", rest: "rest", boss: "guardian", custom: "custom" };
 const legacyDefaultLabels: Partial<Record<NodeKind, string[]>> = {
-  origin: ["開始"],
-  skirmish: ["戦闘", "小規模交戦", "通常遭遇"],
-  focused: ["正面衝突", "集中遭遇"],
-  elite: ["精鋭", "危険交戦", "危険遭遇"],
-  anomaly: ["特異事象", "固有遭遇"],
-  event: ["イベント", "分岐事象", "選択事象"],
-  supply: ["ショップ", "補給所", "補給地点"],
-  rest: ["休息", "休息地点"],
-  guardian: ["ボス", "終端警戒", "終端遭遇"],
+  origin: ["起点"],
+  skirmish: ["通過点", "戦闘", "小規模交戦", "通常遭遇"],
+  focused: ["収束点", "正面衝突", "集中遭遇"],
+  elite: ["危険点", "精鋭", "危険交戦", "危険遭遇"],
+  anomaly: ["変則点", "特異事象", "固有遭遇"],
+  event: ["分岐点", "分岐事象", "選択事象"],
+  supply: ["補給点", "ショップ", "補給地点"],
+  rest: ["休止点", "休息", "休息地点"],
+  guardian: ["終端点", "ボス", "終端警戒", "終端遭遇"],
 };
 
-export const markerPaths: Record<Exclude<NodeKind, "custom">, string[]> = {
-  origin: ["M 0 -18 V 18", "M -18 0 H 18", "M -11 -11 L 0 -18 L 11 -11", "M -11 11 L 0 18 L 11 11"],
-  skirmish: ["M -17 -12 L -3 0 L -17 12 Z", "M 17 -12 L 3 0 L 17 12 Z", "M -3 0 H 3"],
-  focused: ["M 0 -18 L 12 -6 L 0 6 L -12 -6 Z", "M 0 -10 V 18", "M -20 16 H 20"],
-  elite: ["M 0 -19 V 4", "M 0 -19 L -15 -4", "M 0 -19 L 15 -4", "M -15 -4 V 8", "M 15 -4 V 8", "M -20 15 H 20"],
-  anomaly: ["M -14 -11 A 18 18 0 0 1 13 -10", "M 15 -4 A 18 18 0 0 1 -5 17", "M -11 13 A 18 18 0 0 1 -17 -3", "M -2 2 L 3 -4 L 8 2"],
-  event: ["M 0 -19 V -5", "M 0 -5 L -15 11", "M 0 -5 L 15 11", "M -15 11 V 18", "M 15 11 V 18", "M -21 18 H -9", "M 9 18 H 21"],
-  supply: ["M -17 -10 H 17 V 13 H -17 Z", "M -17 -2 H 17", "M -7 -10 V 13", "M 7 -10 V 13", "M -23 18 H 23"],
-  rest: ["M -18 14 H 18", "M -12 14 V 1 Q 0 -15 12 1 V 14", "M -22 19 H 22"],
-  guardian: ["M -17 -14 V 15 H 17 V -14", "M -8 -14 V 15", "M 8 -14 V 15", "M -21 -14 H 21", "M -23 20 H 23"],
-};
+const waypointOuterPath = "M -44 -24 L -27 -43 H 27 L 44 -24 V 24 L 27 43 H -27 L -44 24 Z";
+const waypointInnerPath = "M -30 -16 L -19 -29 H 19 L 30 -16 V 16 L 19 29 H -19 L -30 16 Z";
+const waypointSpokes = ["M -30 -16 L -44 -24", "M 30 -16 L 44 -24", "M 30 16 L 44 24", "M -30 16 L -44 24"];
 
 function resolveKind(value: unknown): NodeKind {
   if (typeof value === "string" && value in kinds) return value as NodeKind;
@@ -201,18 +205,18 @@ export function layoutFor(tree: RouteTree) {
   return { width, height, positions, columns };
 }
 
-function waypointTicks(x: number, y: number) { return `M ${x} ${y - 47} v 10 M ${x + 47} ${y} h -10 M ${x} ${y + 47} v -10 M ${x - 47} ${y} h 10`; }
 function markerSvg(kind: NodeKind, color: string, icon: string) {
   if (kind === "custom" && icon) return `<text x="0" y="9" text-anchor="middle" fill="${color}" font-family="sans-serif" font-size="25">${escapeXml(icon)}</text>`;
-  const paths = markerPaths[kind === "custom" ? "origin" : kind];
-  const width = kind === "elite" || kind === "guardian" ? 3.1 : kind === "anomaly" ? 2.7 : 2.5;
-  return paths.map((d) => `<path d="${d}" fill="none" stroke="${color}" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round"/>`).join("");
+  const source = encounterIconSources[kind === "custom" ? "origin" : kind];
+  return `<image href="${escapeXml(source)}" x="-29" y="-29" width="58" height="58" preserveAspectRatio="xMidYMid meet"/>`;
 }
 function NodeMark({ node, color }: { node: RouteNode; color: string }) {
   if (node.kind === "custom" && node.icon) return <text x="0" y="9" textAnchor="middle" fill={color} fontSize="25">{node.icon}</text>;
   const kind = node.kind === "custom" ? "origin" : node.kind;
-  const width = kind === "elite" || kind === "guardian" ? 3.1 : kind === "anomaly" ? 2.7 : 2.5;
-  return <>{markerPaths[kind].map((d, index) => <path key={`${node.kind}_${index}`} d={d} fill="none" stroke={color} strokeWidth={width} strokeLinecap="round" strokeLinejoin="round" />)}</>;
+  return <image href={encounterIconSources[kind]} x="-29" y="-29" width="58" height="58" preserveAspectRatio="xMidYMid meet" />;
+}
+function NodeFrame({ color, selected = false }: { color: string; selected?: boolean }) {
+  return <><path d={waypointOuterPath} fill="#07171b" stroke={color} strokeWidth={selected ? 4.8 : 3} strokeLinejoin="round" /><path d={waypointInnerPath} fill="none" stroke={color} strokeOpacity=".56" strokeWidth="2" strokeLinejoin="round" />{waypointSpokes.map((d) => <path key={d} d={d} fill="none" stroke={color} strokeOpacity=".56" strokeWidth="2" strokeLinecap="round" />)}</>;
 }
 
 export function buildSvg(tree: RouteTree) {
@@ -220,14 +224,15 @@ export function buildSvg(tree: RouteTree) {
   const paths = tree.edges.map(([from, to]) => {
     const a = positions[from]; const b = positions[to]; if (!a || !b) return "";
     const bend = Math.max(46, (b.x - a.x) * .47);
-    const d = `M ${a.x + 47} ${a.y} C ${a.x + bend} ${a.y}, ${b.x - bend} ${b.y}, ${b.x - 47} ${b.y}`;
+    const d = `M ${a.x + 48} ${a.y} C ${a.x + bend} ${a.y}, ${b.x - bend} ${b.y}, ${b.x - 48} ${b.y}`;
     return `<path d="${d}" fill="none" stroke="${escapeXml(tree.theme.line)}" stroke-opacity=".18" stroke-width="8" stroke-linecap="round"/><path d="${d}" fill="none" stroke="${escapeXml(tree.theme.line)}" stroke-width="2.6" stroke-linecap="round"/>`;
   }).join("");
   const nodes = tree.nodes.map((node) => {
     const p = positions[node.id]; if (!p) return "";
     const color = colors[node.accent];
     const label = tree.theme.showLabels ? `<text x="${p.x}" y="${p.y + 61}" text-anchor="middle" fill="#eef5f7" font-family="Noto Sans JP, sans-serif" font-size="14">${escapeXml(node.label)}</text>` : "";
-    return `<g><circle cx="${p.x}" cy="${p.y}" r="39" fill="#09252a" stroke="${color}" stroke-width="3"/><circle cx="${p.x}" cy="${p.y}" r="29" fill="none" stroke="${color}" stroke-opacity=".36"/><path d="${waypointTicks(p.x, p.y)}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round"/><g transform="translate(${p.x} ${p.y})">${markerSvg(node.kind, color, node.icon)}</g>${label}</g>`;
+    const frame = `<path d="${waypointOuterPath}" fill="#07171b" stroke="${color}" stroke-width="3" stroke-linejoin="round"/><path d="${waypointInnerPath}" fill="none" stroke="${color}" stroke-opacity=".56" stroke-width="2" stroke-linejoin="round"/>${waypointSpokes.map((d) => `<path d="${d}" fill="none" stroke="${color}" stroke-opacity=".56" stroke-width="2" stroke-linecap="round"/>`).join("")}`;
+    return `<g transform="translate(${p.x} ${p.y})">${frame}${markerSvg(node.kind, color, node.icon)}${label ? `<g transform="translate(${-p.x} ${-p.y})">${label}</g>` : ""}</g>`;
   }).join("");
   const fieldY = height - 32;
   const field = `<g opacity=".42"><path d="M 36 ${fieldY} H ${width - 36}" fill="none" stroke="${escapeXml(tree.theme.line)}" stroke-width="1" stroke-dasharray="2 7"/><path d="M 36 ${fieldY - 14} V ${fieldY + 14} M ${width - 36} ${fieldY - 14} V ${fieldY + 14}" fill="none" stroke="#d7ad54" stroke-width="1.3"/><text x="48" y="${fieldY - 11}" fill="#d7ad54" font-family="monospace" font-size="10">ROUTE FIELD / ${String(tree.nodes.length).padStart(2, "0")} WAYPOINTS</text></g>`;
@@ -289,11 +294,9 @@ function RouteCanvas({ tree, selectedId, onNodeClick }: { tree: RouteTree; selec
       <rect width="100%" height="100%" rx="18" fill={tree.theme.background} />
       <g opacity=".42" aria-hidden="true"><path d={`M 36 ${height - 32} H ${width - 36}`} fill="none" stroke={tree.theme.line} strokeWidth="1" strokeDasharray="2 7" /><path d={`M 36 ${height - 46} V ${height - 18} M ${width - 36} ${height - 46} V ${height - 18}`} fill="none" stroke="#d7ad54" strokeWidth="1.3" /><text x="48" y={height - 43} fill="#d7ad54" fontFamily="monospace" fontSize="10">ROUTE FIELD / {String(tree.nodes.length).padStart(2, "0")} WAYPOINTS</text></g>
       {columns.map((_, index) => <line key={index} x1={94 + index * 220} x2={94 + index * 220} y1="38" y2={height - 38} className="stage-guide" />)}
-      {tree.edges.map(([from, to]) => { const a = positions[from]; const b = positions[to]; if (!a || !b) return null; const bend = Math.max(46, (b.x - a.x) * .47); const d = `M ${a.x + 47} ${a.y} C ${a.x + bend} ${a.y}, ${b.x - bend} ${b.y}, ${b.x - 47} ${b.y}`; return <g key={`${from}_${to}`}><path d={d} fill="none" stroke={tree.theme.line} strokeOpacity=".18" strokeWidth="8" strokeLinecap="round" /><path d={d} fill="none" stroke={tree.theme.line} strokeWidth="2.6" strokeLinecap="round" /></g>; })}
+      {tree.edges.map(([from, to]) => { const a = positions[from]; const b = positions[to]; if (!a || !b) return null; const bend = Math.max(46, (b.x - a.x) * .47); const d = `M ${a.x + 48} ${a.y} C ${a.x + bend} ${a.y}, ${b.x - bend} ${b.y}, ${b.x - 48} ${b.y}`; return <g key={`${from}_${to}`}><path d={d} fill="none" stroke={tree.theme.line} strokeOpacity=".18" strokeWidth="8" strokeLinecap="round" /><path d={d} fill="none" stroke={tree.theme.line} strokeWidth="2.6" strokeLinecap="round" /></g>; })}
       {tree.nodes.map((node) => { const p = positions[node.id]; const selected = selectedId === node.id; const mark = selected ? colors.gold : colors[node.accent]; return <g key={node.id} transform={`translate(${p.x} ${p.y})`} className={`route-node ${selected ? "is-selected" : ""}`} role="button" tabIndex={0} aria-label={`${node.label}を選択`} onClick={() => { if (!suppressClickRef.current) onNodeClick(node.id); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onNodeClick(node.id); } }}>
-        <circle r="39" fill="#09252a" stroke={mark} strokeWidth={selected ? 5 : 3} />
-        <circle r="29" fill="none" stroke={mark} strokeOpacity=".32" />
-        <path d="M 0 -47 v 10 M 47 0 h -10 M 0 47 v -10 M -47 0 h 10" fill="none" stroke={mark} strokeWidth="2" strokeLinecap="round" />
+        <NodeFrame color={mark} selected={selected} />
         <NodeMark node={node} color={mark} />
         {tree.theme.showLabels && <text y="61" textAnchor="middle" fill="#eef5f7" fontSize="14">{node.label}</text>}
       </g>; })}
