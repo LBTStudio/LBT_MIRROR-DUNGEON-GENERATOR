@@ -54,9 +54,11 @@ const bundledIconNames = {
   guardian: "Boss_Encounter_Icon",
 } as const;
 
-const isProductionBundle = Boolean(import.meta.env?.PROD);
-const bundledIconBase = `${import.meta.env?.BASE_URL ?? "/"}icons/`;
-export const encounterIconSources: Record<Exclude<NodeKind, "custom">, string> = isProductionBundle
+const viteEnv = (import.meta as ImportMeta & { env?: { BASE_URL?: string } }).env;
+const appBase = viteEnv?.BASE_URL ?? "/";
+const bundledIconBase = `${appBase}icons/`;
+const usesBundledIcons = appBase !== "/";
+export const encounterIconSources: Record<Exclude<NodeKind, "custom">, string> = usesBundledIcons
   ? Object.fromEntries(Object.entries(bundledIconNames).map(([kind, name]) => [kind, `${bundledIconBase}${name}.png`])) as Record<Exclude<NodeKind, "custom">, string>
   : devIconSources;
 
