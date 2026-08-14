@@ -45,16 +45,16 @@ const colors: Record<Accent, string> = { gold: "#c99a42", ember: "#b01c37", ash:
 const legacyAccents: Record<string, Accent> = { brass: "gold", teal: "ember", slate: "ash" };
 const legacyKinds: Record<string, NodeKind> = { start: "origin", battle: "skirmish", elite: "elite", event: "event", shop: "supply", rest: "rest", boss: "guardian", custom: "custom" };
 
-const markerPaths: Record<Exclude<NodeKind, "custom">, string[]> = {
-  origin: ["M -16 0 H 16", "M 0 -16 V 16", "M -9 -9 L 0 -15 L 9 -9"],
-  skirmish: ["M -15 -10 L -4 1", "M -7 10 L 4 -1", "M 2 10 L 14 -2"],
-  focused: ["M 0 -14 A 14 14 0 1 1 0 14 A 14 14 0 1 1 0 -14", "M -20 0 H -13", "M 13 0 H 20", "M 0 -20 V -13", "M 0 13 V 20"],
-  elite: ["M 0 -15 L 15 0 L 0 15 L -15 0 Z", "M -20 -7 V -15 H -12", "M 12 15 H 20 V 7", "M -20 7 V 15 H -12", "M 12 -15 H 20 V -7"],
-  anomaly: ["M 0 -17 C 13 -13 15 10 0 17 C -15 10 -13 -13 0 -17 Z", "M -12 0 C -5 -7 5 -7 12 0", "M -9 7 C -3 2 3 2 9 7"],
-  event: ["M 0 -17 V -3", "M 0 -3 L -14 13", "M 0 -3 L 14 13", "M -17 11 L -10 16", "M 17 11 L 10 16"],
-  supply: ["M -16 -10 H 16 V 12 H -16 Z", "M -7 -10 V 12", "M 7 -10 V 12", "M -16 0 H 16"],
-  rest: ["M -16 12 H 16", "M -11 12 V -3 H 11 V 12", "M -11 -3 L 0 -15 L 11 -3"],
-  guardian: ["M 0 -18 L 5 -6 L 18 0 L 5 6 L 0 18 L -5 6 L -18 0 L -5 -6 Z", "M -7 0 H 7", "M 0 -7 V 7"],
+export const markerPaths: Record<Exclude<NodeKind, "custom">, string[]> = {
+  origin: ["M 0 -18 V 18", "M -18 0 H 18", "M -11 -11 L 0 -18 L 11 -11", "M -11 11 L 0 18 L 11 11"],
+  skirmish: ["M -17 -12 L -3 0 L -17 12 Z", "M 17 -12 L 3 0 L 17 12 Z", "M -3 0 H 3"],
+  focused: ["M 0 -18 L 12 -6 L 0 6 L -12 -6 Z", "M 0 -10 V 18", "M -20 16 H 20"],
+  elite: ["M 0 -19 V 4", "M 0 -19 L -15 -4", "M 0 -19 L 15 -4", "M -15 -4 V 8", "M 15 -4 V 8", "M -20 15 H 20"],
+  anomaly: ["M -14 -11 A 18 18 0 0 1 13 -10", "M 15 -4 A 18 18 0 0 1 -5 17", "M -11 13 A 18 18 0 0 1 -17 -3", "M -2 2 L 3 -4 L 8 2"],
+  event: ["M 0 -19 V -5", "M 0 -5 L -15 11", "M 0 -5 L 15 11", "M -15 11 V 18", "M 15 11 V 18", "M -21 18 H -9", "M 9 18 H 21"],
+  supply: ["M -17 -10 H 17 V 13 H -17 Z", "M -17 -2 H 17", "M -7 -10 V 13", "M 7 -10 V 13", "M -23 18 H 23"],
+  rest: ["M -18 14 H 18", "M -12 14 V 1 Q 0 -15 12 1 V 14", "M -22 19 H 22"],
+  guardian: ["M -17 -14 V 15 H 17 V -14", "M -8 -14 V 15", "M 8 -14 V 15", "M -21 -14 H 21", "M -23 20 H 23"],
 };
 
 function resolveKind(value: unknown): NodeKind {
@@ -189,11 +189,14 @@ function waypointTicks(x: number, y: number) { return `M ${x} ${y - 47} v 10 M $
 function markerSvg(kind: NodeKind, color: string, icon: string) {
   if (kind === "custom" && icon) return `<text x="0" y="9" text-anchor="middle" fill="${color}" font-family="sans-serif" font-size="25">${escapeXml(icon)}</text>`;
   const paths = markerPaths[kind === "custom" ? "origin" : kind];
-  return paths.map((d) => `<path d="${d}" fill="none" stroke="${color}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>`).join("");
+  const width = kind === "elite" || kind === "guardian" ? 3.1 : kind === "anomaly" ? 2.7 : 2.5;
+  return paths.map((d) => `<path d="${d}" fill="none" stroke="${color}" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round"/>`).join("");
 }
 function NodeMark({ node, color }: { node: RouteNode; color: string }) {
   if (node.kind === "custom" && node.icon) return <text x="0" y="9" textAnchor="middle" fill={color} fontSize="25">{node.icon}</text>;
-  return <>{markerPaths[node.kind === "custom" ? "origin" : node.kind].map((d, index) => <path key={`${node.kind}_${index}`} d={d} fill="none" stroke={color} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />)}</>;
+  const kind = node.kind === "custom" ? "origin" : node.kind;
+  const width = kind === "elite" || kind === "guardian" ? 3.1 : kind === "anomaly" ? 2.7 : 2.5;
+  return <>{markerPaths[kind].map((d, index) => <path key={`${node.kind}_${index}`} d={d} fill="none" stroke={color} strokeWidth={width} strokeLinecap="round" strokeLinejoin="round" />)}</>;
 }
 
 export function buildSvg(tree: RouteTree) {

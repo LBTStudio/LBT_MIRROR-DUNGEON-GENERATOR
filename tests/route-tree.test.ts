@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { baseTree, buildSvg, changeNodeKind, createTreeHistory, defaultAccent, layoutFor, normalize, recordTreeChange, redoTreeHistory, undoTreeHistory } from "../client/src/pages/Home";
+import { baseTree, buildSvg, changeNodeKind, createTreeHistory, defaultAccent, layoutFor, markerPaths, normalize, recordTreeChange, redoTreeHistory, undoTreeHistory } from "../client/src/pages/Home";
 
 const base = baseTree();
 assert.equal(base.nodes.length, 7, "初期ツリーは7地点");
@@ -7,6 +7,9 @@ assert.equal(base.theme.background, "#16090c", "初期背景は黒を基調に�
 assert.equal(base.theme.line, "#9c3142", "初期経路は深紅を基調にする");
 assert.equal(defaultAccent("guardian"), "gold", "終端警戒は古金の役割色にする");
 assert.equal(defaultAccent("elite"), "ember", "危険交戦は深紅の役割色にする");
+assert.ok(markerPaths.skirmish.some((path) => path.endsWith("Z")), "小規模交戦は向かい合う測量旗の閉じた輪郭を持つ");
+assert.ok(markerPaths.anomaly.some((path) => path.includes("A 18 18")), "特異事象は分断された測量アークを持つ");
+assert.ok(markerPaths.guardian.some((path) => path.includes("V 15")), "終端警戒は終端ゲートの垂直標を持つ");
 const migratedTheme = normalize({ nodes: base.nodes, theme: { background: "#101720", line: "#6e8594", showLabels: false, iconSize: 27 } });
 assert.equal(migratedTheme.theme.background, "#16090c", "旧標準背景は新しい黒の初期テーマへ移行する");
 assert.equal(migratedTheme.theme.line, "#9c3142", "旧標準経路色は新しい深紅の初期テーマへ移行する");
