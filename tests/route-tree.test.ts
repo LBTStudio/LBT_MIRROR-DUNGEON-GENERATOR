@@ -9,8 +9,8 @@ assert.equal(defaultAccent("guardian"), "ember", "終端警戒は朱赤の警戒
 assert.equal(defaultAccent("elite"), "ember", "危険交戦は深紅の役割色にする");
 for (const [kind, paths] of Object.entries(markerPaths)) assert.ok(paths.length >= 3, `${kind}は独自の測量記号を持つ`);
 assert.ok(markerPaths.skirmish.some((path) => path.endsWith("Z")), "通常遭遇は対向する閉鎖測量枠を持つ");
-assert.ok(markerPaths.anomaly.some((path) => path.includes("H -6")), "固有遭遇は分断された測量枠を持つ");
-assert.ok(markerPaths.guardian.some((path) => path.includes("L 14 14")), "終端遭遇は交差する終端標を持つ");
+assert.ok(markerPaths.anomaly.some((path) => path.includes("A 18 18")), "変則点は分断された測量アークを持つ");
+assert.ok(markerPaths.guardian.some((path) => path.includes("V 15")), "終端点は終端ゲートの垂直標を持つ");
 const migratedTheme = normalize({ nodes: base.nodes, theme: { background: "#101720", line: "#6e8594", showLabels: false, iconSize: 27 } });
 assert.equal(migratedTheme.theme.background, "#07171b", "旧標準背景は新しい青緑の地図テーマへ移行する");
 assert.equal(migratedTheme.theme.line, "#70d9df", "旧標準経路色は新しい青緑の地図テーマへ移行する");

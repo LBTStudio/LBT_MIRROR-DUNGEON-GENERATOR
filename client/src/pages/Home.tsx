@@ -58,15 +58,15 @@ const legacyDefaultLabels: Partial<Record<NodeKind, string[]>> = {
 };
 
 export const markerPaths: Record<Exclude<NodeKind, "custom">, string[]> = {
-  origin: ["M 0 -19 V 19", "M -19 0 H 19", "M -9 -9 L 0 -16 L 9 -9", "M -9 9 L 0 16 L 9 9"],
-  skirmish: ["M -18 -11 H -5 V 11 H -18 Z", "M 18 -11 H 5 V 11 H 18 Z", "M -2 -5 L 3 0 L -2 5"],
-  focused: ["M 0 -19 L 16 -9 L 16 9 L 0 19 L -16 9 L -16 -9 Z", "M -10 0 H 10", "M 0 -10 V 10"],
-  elite: ["M 0 -20 V 6", "M 0 -20 L -15 -11", "M 0 -20 L 15 -11", "M -15 -11 V 6", "M 15 -11 V 6", "M -20 13 H 20", "M -12 19 H 12"],
-  anomaly: ["M -18 -14 H -6", "M 6 -14 H 18 V -4", "M 18 5 V 14 H 7", "M -7 14 H -18 V 4", "M -18 -5 V -14", "M -6 -3 L 0 5 L 6 -3"],
-  event: ["M 0 -19 V -6", "M 0 -6 L -16 10", "M 0 -6 L 16 10", "M -16 10 V 18", "M 16 10 V 18", "M -20 18 H -12", "M 12 18 H 20"],
-  supply: ["M -18 -12 H 18 V 14 H -18 Z", "M -18 -3 H 18", "M -8 -12 V 14", "M 8 -12 V 14", "M -23 19 H 23"],
-  rest: ["M -19 15 H 19", "M -13 15 V 2 Q 0 -16 13 2 V 15", "M -23 20 H 23", "M -7 7 H 7"],
-  guardian: ["M 0 -20 V 20", "M -20 0 H 20", "M -14 -14 L 14 14", "M 14 -14 L -14 14", "M -22 20 H 22"],
+  origin: ["M 0 -18 V 18", "M -18 0 H 18", "M -11 -11 L 0 -18 L 11 -11", "M -11 11 L 0 18 L 11 11"],
+  skirmish: ["M -17 -12 L -3 0 L -17 12 Z", "M 17 -12 L 3 0 L 17 12 Z", "M -3 0 H 3"],
+  focused: ["M 0 -18 L 12 -6 L 0 6 L -12 -6 Z", "M 0 -10 V 18", "M -20 16 H 20"],
+  elite: ["M 0 -19 V 4", "M 0 -19 L -15 -4", "M 0 -19 L 15 -4", "M -15 -4 V 8", "M 15 -4 V 8", "M -20 15 H 20"],
+  anomaly: ["M -14 -11 A 18 18 0 0 1 13 -10", "M 15 -4 A 18 18 0 0 1 -5 17", "M -11 13 A 18 18 0 0 1 -17 -3", "M -2 2 L 3 -4 L 8 2"],
+  event: ["M 0 -19 V -5", "M 0 -5 L -15 11", "M 0 -5 L 15 11", "M -15 11 V 18", "M 15 11 V 18", "M -21 18 H -9", "M 9 18 H 21"],
+  supply: ["M -17 -10 H 17 V 13 H -17 Z", "M -17 -2 H 17", "M -7 -10 V 13", "M 7 -10 V 13", "M -23 18 H 23"],
+  rest: ["M -18 14 H 18", "M -12 14 V 1 Q 0 -15 12 1 V 14", "M -22 19 H 22"],
+  guardian: ["M -17 -14 V 15 H 17 V -14", "M -8 -14 V 15", "M 8 -14 V 15", "M -21 -14 H 21", "M -23 20 H 23"],
 };
 
 function resolveKind(value: unknown): NodeKind {
