@@ -30,7 +30,7 @@ const asset = {
   reference: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663619237894/LEyqoVYchbPRYqTj.jpg",
 };
 
-export const encounterIconSources: Record<Exclude<NodeKind, "custom">, string> = {
+const devIconSources = {
   origin: "/manus-storage/Dungeon_Entrance_Icon_3c3c7f17.png",
   skirmish: "/manus-storage/Normal_Encounter_Icon_ac411f79.png",
   focused: "/manus-storage/Monster_Encounter_Icon_2a9cacfe.png",
@@ -40,7 +40,25 @@ export const encounterIconSources: Record<Exclude<NodeKind, "custom">, string> =
   supply: "/manus-storage/Shop_Encounter_Icon_bbd20be7.png",
   rest: "/manus-storage/Rest_Stop_Encounter_Icon_c8e1da99.png",
   guardian: "/manus-storage/Boss_Encounter_Icon_2663c108.png",
-};
+} as const;
+
+const bundledIconNames = {
+  origin: "Dungeon_Entrance_Icon",
+  skirmish: "Normal_Encounter_Icon",
+  focused: "Monster_Encounter_Icon",
+  elite: "Coin_Encounter_Icon",
+  anomaly: "Blubbering_Toad_Core_Icon",
+  event: "Event_Encounter_Icon",
+  supply: "Shop_Encounter_Icon",
+  rest: "Rest_Stop_Encounter_Icon",
+  guardian: "Boss_Encounter_Icon",
+} as const;
+
+const isProductionBundle = Boolean(import.meta.env?.PROD);
+const bundledIconBase = `${import.meta.env?.BASE_URL ?? "/"}icons/`;
+export const encounterIconSources: Record<Exclude<NodeKind, "custom">, string> = isProductionBundle
+  ? Object.fromEntries(Object.entries(bundledIconNames).map(([kind, name]) => [kind, `${bundledIconBase}${name}.png`])) as Record<Exclude<NodeKind, "custom">, string>
+  : devIconSources;
 
 const kinds: Record<NodeKind, { label: string; short: string; description: string }> = {
   origin: { label: "開始", short: "始", description: "経路の出発地点" },

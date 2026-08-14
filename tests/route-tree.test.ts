@@ -11,6 +11,7 @@ assert.equal(Object.keys(encounterIconSources).length, 9, "9種別すべてに�
 assert.ok(encounterIconSources.skirmish.includes("Normal_Encounter_Icon"), "通常戦闘は通常遭遇アイコンを使う");
 assert.ok(encounterIconSources.event.includes("Event_Encounter_Icon"), "イベントは疑問符の遭遇アイコンを使う");
 assert.ok(encounterIconSources.guardian.includes("Boss_Encounter_Icon"), "終端ボスはボス遭遇アイコンを使う");
+assert.equal(encounterIconSources.skirmish.startsWith("/manus-storage/"), true, "開発時は既存のストレージプロキシからアイコンを表示する");
 const migratedTheme = normalize({ nodes: base.nodes, theme: { background: "#101720", line: "#6e8594", showLabels: false, iconSize: 27 } });
 assert.equal(migratedTheme.theme.background, "#07171b", "旧標準背景は新しい青緑の地図テーマへ移行する");
 assert.equal(migratedTheme.theme.line, "#70d9df", "旧標準経路色は新しい青緑の地図テーマへ移行する");
