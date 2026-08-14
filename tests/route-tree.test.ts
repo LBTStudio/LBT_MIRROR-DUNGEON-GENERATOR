@@ -2,21 +2,22 @@ import assert from "node:assert/strict";
 import { baseTree, buildSvg, changeNodeKind, createTreeHistory, defaultAccent, layoutFor, markerPaths, normalize, recordTreeChange, redoTreeHistory, undoTreeHistory } from "../client/src/pages/Home";
 
 const base = baseTree();
-assert.equal(base.nodes.length, 7, "初期ツリーは7地点");
+assert.equal(base.nodes.length, 9, "初期ツリーは全主要種別を例示する9地点");
 assert.equal(base.theme.background, "#07171b", "初期背景は青緑の暗部を基調にする");
 assert.equal(base.theme.line, "#70d9df", "初期経路は青緑の実線を基調にする");
 assert.equal(defaultAccent("guardian"), "ember", "終端警戒は朱赤の警戒色にする");
 assert.equal(defaultAccent("elite"), "ember", "危険交戦は深紅の役割色にする");
-assert.ok(markerPaths.skirmish.some((path) => path.endsWith("Z")), "小規模交戦は向かい合う測量旗の閉じた輪郭を持つ");
-assert.ok(markerPaths.anomaly.some((path) => path.includes("A 18 18")), "特異事象は分断された測量アークを持つ");
-assert.ok(markerPaths.guardian.some((path) => path.includes("V 15")), "終端警戒は終端ゲートの垂直標を持つ");
+for (const [kind, paths] of Object.entries(markerPaths)) assert.ok(paths.length >= 3, `${kind}は独自の測量記号を持つ`);
+assert.ok(markerPaths.skirmish.some((path) => path.endsWith("Z")), "通常遭遇は対向する閉鎖測量枠を持つ");
+assert.ok(markerPaths.anomaly.some((path) => path.includes("H -6")), "固有遭遇は分断された測量枠を持つ");
+assert.ok(markerPaths.guardian.some((path) => path.includes("L 14 14")), "終端遭遇は交差する終端標を持つ");
 const migratedTheme = normalize({ nodes: base.nodes, theme: { background: "#101720", line: "#6e8594", showLabels: false, iconSize: 27 } });
 assert.equal(migratedTheme.theme.background, "#07171b", "旧標準背景は新しい青緑の地図テーマへ移行する");
 assert.equal(migratedTheme.theme.line, "#70d9df", "旧標準経路色は新しい青緑の地図テーマへ移行する");
 const danteMigratedTheme = normalize({ nodes: base.nodes, theme: { background: "#16090c", line: "#9c3142", showLabels: false, iconSize: 27 } });
 assert.equal(danteMigratedTheme.theme.background, "#07171b", "直前の標準背景は地図テーマへ移行する");
 assert.equal(danteMigratedTheme.theme.line, "#70d9df", "直前の標準経路色は地図テーマへ移行する");
-assert.equal(base.edges.length, 9, "初期テンプレートは列間の自動接続を9本生成する");
+assert.equal(base.edges.length, 16, "初期テンプレートは全主要種別を自動接続する16本の航路を生成する");
 
 const byId = new Map(base.nodes.map((node) => [node.id, node]));
 for (const [from, to] of base.edges) {
@@ -42,7 +43,7 @@ assert.equal(legacyTree.nodes.find((node) => node.id === "battle")?.kind, "skirm
 const defaultNamedSkirmish = base.nodes.find((node) => node.id === "skirmish")!;
 const switchedKind = changeNodeKind(defaultNamedSkirmish, "anomaly");
 assert.equal(switchedKind.kind, "anomaly", "地点種別は一度の変更で更新する");
-assert.equal(switchedKind.label, "特異事象", "既定名称の地点は種別変更に合わせて名称も更新する");
+assert.equal(switchedKind.label, "固有遭遇", "既定名称の地点は種別変更に合わせて名称も更新する");
 const namedNode = changeNodeKind({ ...defaultNamedSkirmish, label: "見張り台" }, "focused");
 assert.equal(namedNode.label, "見張り台", "利用者が入力した名称は種別変更で上書きしない");
 

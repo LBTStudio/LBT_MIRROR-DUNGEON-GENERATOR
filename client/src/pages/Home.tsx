@@ -32,14 +32,14 @@ const asset = {
 
 const kinds: Record<NodeKind, { label: string; short: string; description: string }> = {
   origin: { label: "起点", short: "起", description: "経路の出発地点" },
-  skirmish: { label: "小規模交戦", short: "交", description: "標準的な遭遇" },
-  focused: { label: "正面衝突", short: "正", description: "集中して突破する遭遇" },
-  elite: { label: "危険交戦", short: "危", description: "高難度の遭遇" },
-  anomaly: { label: "特異事象", short: "異", description: "特殊な遭遇・難所" },
-  event: { label: "分岐事象", short: "分", description: "選択を伴う事象" },
-  supply: { label: "補給所", short: "補", description: "準備・補給を行う地点" },
-  rest: { label: "休息", short: "休", description: "小休止する地点" },
-  guardian: { label: "終端警戒", short: "終", description: "区間の終端・強敵" },
+  skirmish: { label: "通常遭遇", short: "通", description: "基本的な戦闘・進行地点" },
+  focused: { label: "集中遭遇", short: "集", description: "集中して突破する戦闘地点" },
+  elite: { label: "危険遭遇", short: "危", description: "高危険・高報酬の戦闘地点" },
+  anomaly: { label: "固有遭遇", short: "固", description: "固有相手を伴う特殊な遭遇" },
+  event: { label: "選択事象", short: "選", description: "選択を伴う非戦闘の事象" },
+  supply: { label: "補給地点", short: "補", description: "購入・回復・準備を行う地点" },
+  rest: { label: "休息地点", short: "休", description: "小休止・整備を行う地点" },
+  guardian: { label: "終端遭遇", short: "終", description: "区間を終える最重要の遭遇" },
   custom: { label: "任意", short: "任", description: "自由に設定する地点" },
 };
 const colors: Record<Accent, string> = { gold: "#d7ad54", ember: "#ef4d52", ash: "#6ed6dc" };
@@ -47,15 +47,15 @@ const legacyAccents: Record<string, Accent> = { brass: "gold", teal: "ember", sl
 const legacyKinds: Record<string, NodeKind> = { start: "origin", battle: "skirmish", elite: "elite", event: "event", shop: "supply", rest: "rest", boss: "guardian", custom: "custom" };
 
 export const markerPaths: Record<Exclude<NodeKind, "custom">, string[]> = {
-  origin: ["M 0 -18 V 18", "M -18 0 H 18", "M -11 -11 L 0 -18 L 11 -11", "M -11 11 L 0 18 L 11 11"],
-  skirmish: ["M -17 -12 L -3 0 L -17 12 Z", "M 17 -12 L 3 0 L 17 12 Z", "M -3 0 H 3"],
-  focused: ["M 0 -18 L 12 -6 L 0 6 L -12 -6 Z", "M 0 -10 V 18", "M -20 16 H 20"],
-  elite: ["M 0 -19 V 4", "M 0 -19 L -15 -4", "M 0 -19 L 15 -4", "M -15 -4 V 8", "M 15 -4 V 8", "M -20 15 H 20"],
-  anomaly: ["M -14 -11 A 18 18 0 0 1 13 -10", "M 15 -4 A 18 18 0 0 1 -5 17", "M -11 13 A 18 18 0 0 1 -17 -3", "M -2 2 L 3 -4 L 8 2"],
-  event: ["M 0 -19 V -5", "M 0 -5 L -15 11", "M 0 -5 L 15 11", "M -15 11 V 18", "M 15 11 V 18", "M -21 18 H -9", "M 9 18 H 21"],
-  supply: ["M -17 -10 H 17 V 13 H -17 Z", "M -17 -2 H 17", "M -7 -10 V 13", "M 7 -10 V 13", "M -23 18 H 23"],
-  rest: ["M -18 14 H 18", "M -12 14 V 1 Q 0 -15 12 1 V 14", "M -22 19 H 22"],
-  guardian: ["M -17 -14 V 15 H 17 V -14", "M -8 -14 V 15", "M 8 -14 V 15", "M -21 -14 H 21", "M -23 20 H 23"],
+  origin: ["M 0 -19 V 19", "M -19 0 H 19", "M -9 -9 L 0 -16 L 9 -9", "M -9 9 L 0 16 L 9 9"],
+  skirmish: ["M -18 -11 H -5 V 11 H -18 Z", "M 18 -11 H 5 V 11 H 18 Z", "M -2 -5 L 3 0 L -2 5"],
+  focused: ["M 0 -19 L 16 -9 L 16 9 L 0 19 L -16 9 L -16 -9 Z", "M -10 0 H 10", "M 0 -10 V 10"],
+  elite: ["M 0 -20 V 6", "M 0 -20 L -15 -11", "M 0 -20 L 15 -11", "M -15 -11 V 6", "M 15 -11 V 6", "M -20 13 H 20", "M -12 19 H 12"],
+  anomaly: ["M -18 -14 H -6", "M 6 -14 H 18 V -4", "M 18 5 V 14 H 7", "M -7 14 H -18 V 4", "M -18 -5 V -14", "M -6 -3 L 0 5 L 6 -3"],
+  event: ["M 0 -19 V -6", "M 0 -6 L -16 10", "M 0 -6 L 16 10", "M -16 10 V 18", "M 16 10 V 18", "M -20 18 H -12", "M 12 18 H 20"],
+  supply: ["M -18 -12 H 18 V 14 H -18 Z", "M -18 -3 H 18", "M -8 -12 V 14", "M 8 -12 V 14", "M -23 19 H 23"],
+  rest: ["M -19 15 H 19", "M -13 15 V 2 Q 0 -16 13 2 V 15", "M -23 20 H 23", "M -7 7 H 7"],
+  guardian: ["M 0 -20 V 20", "M -20 0 H 20", "M -14 -14 L 14 14", "M 14 -14 L -14 14", "M -22 20 H 22"],
 };
 
 function resolveKind(value: unknown): NodeKind {
@@ -98,12 +98,14 @@ export const baseTree = (): RouteTree => {
   const origin = { id: "origin", stage: 0, kind: "origin" as NodeKind, icon: "", label: "起点", accent: "ash" as Accent };
   const nodes: RouteNode[] = [
     origin,
-    { id: "skirmish", stage: 1, kind: "skirmish", icon: "", label: "小規模交戦", accent: "ash" },
-    { id: "event", stage: 1, kind: "event", icon: "", label: "分岐事象", accent: "ash" },
-    { id: "focused", stage: 2, kind: "focused", icon: "", label: "正面衝突", accent: "ash" },
-    { id: "elite", stage: 2, kind: "elite", icon: "", label: "危険交戦", accent: "ember" },
-    { id: "supply", stage: 3, kind: "supply", icon: "", label: "補給所", accent: "ash" },
-    { id: "guardian", stage: 4, kind: "guardian", icon: "", label: "終端警戒", accent: "ember" },
+    { id: "skirmish", stage: 1, kind: "skirmish", icon: "", label: "通常遭遇", accent: "ash" },
+    { id: "event", stage: 1, kind: "event", icon: "", label: "選択事象", accent: "ash" },
+    { id: "rest", stage: 1, kind: "rest", icon: "", label: "休息地点", accent: "ash" },
+    { id: "focused", stage: 2, kind: "focused", icon: "", label: "集中遭遇", accent: "ash" },
+    { id: "elite", stage: 2, kind: "elite", icon: "", label: "危険遭遇", accent: "ember" },
+    { id: "anomaly", stage: 2, kind: "anomaly", icon: "", label: "固有遭遇", accent: "ember" },
+    { id: "supply", stage: 3, kind: "supply", icon: "", label: "補給地点", accent: "ash" },
+    { id: "guardian", stage: 4, kind: "guardian", icon: "", label: "終端遭遇", accent: "ember" },
   ];
   return { title: "移動ツリー", nodes, edges: deriveEdges(nodes), theme: { background: STANDARD_THEME.background, line: STANDARD_THEME.line, showLabels: false, iconSize: 27 } };
 };
@@ -361,7 +363,7 @@ export default function Home() {
         <section className="schema-box"><div className="box-heading"><ChevronRight size={15} /><b>経路の長さ</b></div><label className="field"><span>始点から何列まで進めるか</span><select value={columnCount} onChange={(event) => setColumnCount(Number(event.target.value))}>{Array.from({ length: MAX_COLUMNS - 1 }, (_, index) => index + 2).map((count) => <option key={count} value={count}>{count} 列</option>)}</select></label><p>隣り合う列の地点はすべて接続されます。</p></section>
         <section className="column-planner" aria-label="列ごとの地点種別"><div className="box-heading"><Move size={15} /><b>地点種別</b></div>{layout.columns.map((column, stage) => <div className="route-column" key={stage}><div className="column-heading"><span>列 {stage + 1}</span><small>{stage === 0 ? "起点" : `${column.length} 地点`}</small></div>{column.map((node) => <div className={`column-node ${selected.id === node.id ? "is-current" : ""}`} key={node.id}><button type="button" onClick={() => setSelectedId(node.id)} aria-label={`${node.label}を編集`}><svg viewBox="-24 -24 48 48" aria-hidden="true"><NodeMark node={node} color={selected.id === node.id ? colors.gold : colors[node.accent]} /></svg><span>{node.label}</span></button>{stage === 0 ? <span className="locked-kind">起点</span> : <select aria-label={`${node.label}の地点種別`} value={node.kind} onPointerDown={() => setSelectedId(node.id)} onFocus={() => setSelectedId(node.id)} onChange={(event) => setNodeKind(node, event.target.value as NodeKind)}>{Object.entries(kinds).filter(([key]) => key !== "origin").map(([key, item]) => <option key={key} value={key}>{item.short} {item.label}</option>)}</select>}</div>)}{stage > 0 && <button type="button" className="add-column-node" onClick={() => addNode(stage)} disabled={column.length >= MAX_NODES_PER_COLUMN}><Plus size={13} /> この列に地点を追加</button>}</div>)}</section>
         <section className="selected-node-box"><div className="box-heading"><WandSparkles size={15} /><b>選択中の地点</b></div><p><strong>{kinds[selected.kind].label}</strong> — {kinds[selected.kind].description}</p><label className="field"><span>表示名</span><input value={selected.label} maxLength={28} onChange={(event) => updateNode(selected.id, { label: event.target.value })} /></label>{selected.kind === "custom" && <label className="field"><span>任意の記号</span><input value={selected.icon} maxLength={6} placeholder="例：◇ / 鍵 / ◆" onChange={(event) => updateNode(selected.id, { icon: event.target.value })} /></label>}<label className="field"><span>縁取り</span><select value={selected.accent} onChange={(event) => updateNode(selected.id, { accent: event.target.value as Accent })}>{Object.entries(colors).map(([key]) => <option key={key} value={key}>{key}</option>)}</select></label></section>
-        <div className="appearance-box"><div className="box-heading"><WandSparkles size={15} /><b>画像の見た目</b></div><div className="two-fields"><label className="field"><span>背景</span><input type="color" value={tree.theme.background} onChange={(event) => mutate((draft) => { draft.theme.background = event.target.value; })} /></label><label className="field"><span>接続線</span><input type="color" value={tree.theme.line} onChange={(event) => mutate((draft) => { draft.theme.line = event.target.value; })} /></label></div><Button variant="outline" size="sm" className="theme-reset" onClick={() => { applyStandardPalette(); message("黒・赤・金の標準配色を適用しました"); }}><RotateCcw size={14} /> 標準配色を適用</Button><label className="field"><span>アイコンの大きさ</span><input type="range" min="18" max="42" value={tree.theme.iconSize} onChange={(event) => mutate((draft) => { draft.theme.iconSize = Number(event.target.value); })} /></label><label className="check"><input type="checkbox" checked={tree.theme.showLabels} onChange={(event) => mutate((draft) => { draft.theme.showLabels = event.target.checked; })} /> アイコン名を表示する</label></div>
+        <div className="appearance-box"><div className="box-heading"><WandSparkles size={15} /><b>画像の見た目</b></div><div className="two-fields"><label className="field"><span>背景</span><input type="color" value={tree.theme.background} onChange={(event) => mutate((draft) => { draft.theme.background = event.target.value; })} /></label><label className="field"><span>接続線</span><input type="color" value={tree.theme.line} onChange={(event) => mutate((draft) => { draft.theme.line = event.target.value; })} /></label></div><Button variant="outline" size="sm" className="theme-reset" onClick={() => { applyStandardPalette(); message("青緑の地図標準配色を適用しました"); }}><RotateCcw size={14} /> 地図標準配色を適用</Button><label className="field"><span>アイコンの大きさ</span><input type="range" min="18" max="42" value={tree.theme.iconSize} onChange={(event) => mutate((draft) => { draft.theme.iconSize = Number(event.target.value); })} /></label><label className="check"><input type="checkbox" checked={tree.theme.showLabels} onChange={(event) => mutate((draft) => { draft.theme.showLabels = event.target.checked; })} /> アイコン名を表示する</label></div>
         <Button variant="ghost" className="danger-button" onClick={removeNode}><Trash2 size={16} /> この地点を削除</Button>
       </aside>
       <article className="canvas-panel" style={{ backgroundImage: `linear-gradient(rgba(4,20,24,.88), rgba(3,11,14,.96)), url(${asset.texture})` }}><header className="canvas-head"><div><p className="eyebrow">ORBITAL CANVAS</p><h2>移動ツリー</h2><span>列をまたぐ地点は自動で接続されます。地点を選んで種別を変えます。</span><p className="canvas-plate">FORWARD ROUTE / {columnCount} COLUMNS · {tree.nodes.length} WAYPOINTS</p></div><div className="export-actions"><Button variant="outline" onClick={() => { downloadText("orbital-route-atlas.svg", buildSvg(tree), "image/svg+xml;charset=utf-8"); message("SVGを保存しました"); }}><Download size={16} /> SVG</Button><Button variant="outline" onClick={exportPng}><FileDown size={16} /> PNG</Button></div></header>
