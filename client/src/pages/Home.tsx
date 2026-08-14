@@ -32,19 +32,30 @@ const asset = {
 
 const kinds: Record<NodeKind, { label: string; short: string; description: string }> = {
   origin: { label: "起点", short: "起", description: "経路の出発地点" },
-  skirmish: { label: "通常遭遇", short: "通", description: "基本的な戦闘・進行地点" },
-  focused: { label: "集中遭遇", short: "集", description: "集中して突破する戦闘地点" },
-  elite: { label: "危険遭遇", short: "危", description: "高危険・高報酬の戦闘地点" },
-  anomaly: { label: "固有遭遇", short: "固", description: "固有相手を伴う特殊な遭遇" },
-  event: { label: "選択事象", short: "選", description: "選択を伴う非戦闘の事象" },
-  supply: { label: "補給地点", short: "補", description: "購入・回復・準備を行う地点" },
-  rest: { label: "休息地点", short: "休", description: "小休止・整備を行う地点" },
-  guardian: { label: "終端遭遇", short: "終", description: "区間を終える最重要の遭遇" },
+  skirmish: { label: "通過点", short: "通", description: "標準的に通過する経路地点" },
+  focused: { label: "収束点", short: "収", description: "経路が集中する重要地点" },
+  elite: { label: "危険点", short: "危", description: "注意を要する高危険の地点" },
+  anomaly: { label: "変則点", short: "変", description: "通常規則から外れる特殊地点" },
+  event: { label: "分岐点", short: "分", description: "選択によって進行が変わる地点" },
+  supply: { label: "補給点", short: "補", description: "補給・整備を行う管理地点" },
+  rest: { label: "休止点", short: "休", description: "一時停止して整える地点" },
+  guardian: { label: "終端点", short: "終", description: "区間の到達目標となる地点" },
   custom: { label: "任意", short: "任", description: "自由に設定する地点" },
 };
 const colors: Record<Accent, string> = { gold: "#d7ad54", ember: "#ef4d52", ash: "#6ed6dc" };
 const legacyAccents: Record<string, Accent> = { brass: "gold", teal: "ember", slate: "ash" };
 const legacyKinds: Record<string, NodeKind> = { start: "origin", battle: "skirmish", elite: "elite", event: "event", shop: "supply", rest: "rest", boss: "guardian", custom: "custom" };
+const legacyDefaultLabels: Partial<Record<NodeKind, string[]>> = {
+  origin: ["開始"],
+  skirmish: ["戦闘", "小規模交戦", "通常遭遇"],
+  focused: ["正面衝突", "集中遭遇"],
+  elite: ["精鋭", "危険交戦", "危険遭遇"],
+  anomaly: ["特異事象", "固有遭遇"],
+  event: ["イベント", "分岐事象", "選択事象"],
+  supply: ["ショップ", "補給所", "補給地点"],
+  rest: ["休息", "休息地点"],
+  guardian: ["ボス", "終端警戒", "終端遭遇"],
+};
 
 export const markerPaths: Record<Exclude<NodeKind, "custom">, string[]> = {
   origin: ["M 0 -19 V 19", "M -19 0 H 19", "M -9 -9 L 0 -16 L 9 -9", "M -9 9 L 0 16 L 9 9"],
@@ -63,6 +74,8 @@ function resolveKind(value: unknown): NodeKind {
   return legacyKinds[String(value)] ?? "custom";
 }
 function clean(value: unknown, max = 28) { return String(value ?? "").replace(/[<>]/g, "").slice(0, max); }
+function isDefaultNodeLabel(kind: NodeKind, label: string) { return label === kinds[kind].label || legacyDefaultLabels[kind]?.includes(label) === true; }
+function normalizeNodeLabel(value: unknown, kind: NodeKind) { const label = clean(value); return !label || isDefaultNodeLabel(kind, label) ? kinds[kind].label : label; }
 function clone<T>(value: T): T { return JSON.parse(JSON.stringify(value)); }
 function uuid() { return globalThis.crypto?.randomUUID?.() ?? `node_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`; }
 function escapeXml(value: unknown) { return String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;"); }
@@ -98,14 +111,14 @@ export const baseTree = (): RouteTree => {
   const origin = { id: "origin", stage: 0, kind: "origin" as NodeKind, icon: "", label: "起点", accent: "ash" as Accent };
   const nodes: RouteNode[] = [
     origin,
-    { id: "skirmish", stage: 1, kind: "skirmish", icon: "", label: "通常遭遇", accent: "ash" },
-    { id: "event", stage: 1, kind: "event", icon: "", label: "選択事象", accent: "ash" },
-    { id: "rest", stage: 1, kind: "rest", icon: "", label: "休息地点", accent: "ash" },
-    { id: "focused", stage: 2, kind: "focused", icon: "", label: "集中遭遇", accent: "ash" },
-    { id: "elite", stage: 2, kind: "elite", icon: "", label: "危険遭遇", accent: "ember" },
-    { id: "anomaly", stage: 2, kind: "anomaly", icon: "", label: "固有遭遇", accent: "ember" },
-    { id: "supply", stage: 3, kind: "supply", icon: "", label: "補給地点", accent: "ash" },
-    { id: "guardian", stage: 4, kind: "guardian", icon: "", label: "終端遭遇", accent: "ember" },
+    { id: "skirmish", stage: 1, kind: "skirmish", icon: "", label: "通過点", accent: "ash" },
+    { id: "event", stage: 1, kind: "event", icon: "", label: "分岐点", accent: "ash" },
+    { id: "rest", stage: 1, kind: "rest", icon: "", label: "休止点", accent: "ash" },
+    { id: "focused", stage: 2, kind: "focused", icon: "", label: "収束点", accent: "ash" },
+    { id: "elite", stage: 2, kind: "elite", icon: "", label: "危険点", accent: "ember" },
+    { id: "anomaly", stage: 2, kind: "anomaly", icon: "", label: "変則点", accent: "ember" },
+    { id: "supply", stage: 3, kind: "supply", icon: "", label: "補給点", accent: "ash" },
+    { id: "guardian", stage: 4, kind: "guardian", icon: "", label: "終端点", accent: "ember" },
   ];
   return { title: "移動ツリー", nodes, edges: deriveEdges(nodes), theme: { background: STANDARD_THEME.background, line: STANDARD_THEME.line, showLabels: false, iconSize: 27 } };
 };
@@ -120,7 +133,7 @@ export function normalize(input: unknown): RouteTree {
     stage: Math.max(0, Math.min(MAX_COLUMNS - 1, Number.parseInt(String(node.stage), 10) || 0)),
     kind: resolveKind(node.kind),
     icon: clean(node.icon, 6),
-    label: clean(node.label, 28) || "地点",
+    label: normalizeNodeLabel(node.label, resolveKind(node.kind)),
     accent: node.accent in colors ? node.accent : legacyAccents[String(node.accent)] ?? defaultAccent(resolveKind(node.kind)),
   }));
   const prepared = ensureColumns(parsed.length ? parsed : fallback.nodes);
@@ -138,7 +151,7 @@ export function normalize(input: unknown): RouteTree {
 }
 
 export function changeNodeKind(node: RouteNode, kind: NodeKind): RouteNode {
-  const label = node.label === kinds[node.kind].label || !node.label.trim() ? kinds[kind].label : node.label;
+  const label = isDefaultNodeLabel(node.kind, node.label) || !node.label.trim() ? kinds[kind].label : node.label;
   return { ...node, kind, label };
 }
 
@@ -178,11 +191,12 @@ export function layoutFor(tree: RouteTree) {
   const columns = Array.from({ length: highestStage + 1 }, (_, stage) => tree.nodes.filter((node) => node.stage === stage));
   const widest = Math.max(1, ...columns.map((column) => column.length));
   const width = Math.max(820, 190 + highestStage * 220);
-  const height = Math.max(420, 168 + (widest - 1) * 124);
+  const height = Math.max(520, 168 + (widest - 1) * 124);
   const positions: Record<string, { x: number; y: number }> = {};
   columns.forEach((column, stage) => {
     const span = Math.max(0, (column.length - 1) * 124);
-    column.forEach((node, index) => { positions[node.id] = { x: 94 + stage * 220, y: (height - span) / 2 + index * 124 }; });
+    const routeTop = Math.max(112, Math.round((height - span) * .37));
+    column.forEach((node, index) => { positions[node.id] = { x: 94 + stage * 220, y: routeTop + index * 124 }; });
   });
   return { width, height, positions, columns };
 }
@@ -215,7 +229,9 @@ export function buildSvg(tree: RouteTree) {
     const label = tree.theme.showLabels ? `<text x="${p.x}" y="${p.y + 61}" text-anchor="middle" fill="#eef5f7" font-family="Noto Sans JP, sans-serif" font-size="14">${escapeXml(node.label)}</text>` : "";
     return `<g><circle cx="${p.x}" cy="${p.y}" r="39" fill="#09252a" stroke="${color}" stroke-width="3"/><circle cx="${p.x}" cy="${p.y}" r="29" fill="none" stroke="${color}" stroke-opacity=".36"/><path d="${waypointTicks(p.x, p.y)}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round"/><g transform="translate(${p.x} ${p.y})">${markerSvg(node.kind, color, node.icon)}</g>${label}</g>`;
   }).join("");
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><rect width="100%" height="100%" rx="18" fill="${escapeXml(tree.theme.background)}"/>${paths}${nodes}</svg>`;
+  const fieldY = height - 32;
+  const field = `<g opacity=".42"><path d="M 36 ${fieldY} H ${width - 36}" fill="none" stroke="${escapeXml(tree.theme.line)}" stroke-width="1" stroke-dasharray="2 7"/><path d="M 36 ${fieldY - 14} V ${fieldY + 14} M ${width - 36} ${fieldY - 14} V ${fieldY + 14}" fill="none" stroke="#d7ad54" stroke-width="1.3"/><text x="48" y="${fieldY - 11}" fill="#d7ad54" font-family="monospace" font-size="10">ROUTE FIELD / ${String(tree.nodes.length).padStart(2, "0")} WAYPOINTS</text></g>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><rect width="100%" height="100%" rx="18" fill="${escapeXml(tree.theme.background)}"/>${field}${paths}${nodes}</svg>`;
 }
 
 function downloadText(filename: string, body: string, type: string) {
@@ -271,6 +287,7 @@ function RouteCanvas({ tree, selectedId, onNodeClick }: { tree: RouteTree; selec
   return <div className="canvas-scroll" ref={viewportRef} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp} onWheel={(event) => { if (!event.ctrlKey && !event.metaKey) return; event.preventDefault(); changeZoom(event.deltaY > 0 ? -.08 : .08); }}>
     <div className="canvas-transform" style={{ width, height, left: `calc(50% - ${width / 2}px)`, top: `calc(50% - ${height / 2}px)`, transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }}><svg className="route-svg" width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="img" aria-label="左から右へ進む移動ツリーのプレビュー">
       <rect width="100%" height="100%" rx="18" fill={tree.theme.background} />
+      <g opacity=".42" aria-hidden="true"><path d={`M 36 ${height - 32} H ${width - 36}`} fill="none" stroke={tree.theme.line} strokeWidth="1" strokeDasharray="2 7" /><path d={`M 36 ${height - 46} V ${height - 18} M ${width - 36} ${height - 46} V ${height - 18}`} fill="none" stroke="#d7ad54" strokeWidth="1.3" /><text x="48" y={height - 43} fill="#d7ad54" fontFamily="monospace" fontSize="10">ROUTE FIELD / {String(tree.nodes.length).padStart(2, "0")} WAYPOINTS</text></g>
       {columns.map((_, index) => <line key={index} x1={94 + index * 220} x2={94 + index * 220} y1="38" y2={height - 38} className="stage-guide" />)}
       {tree.edges.map(([from, to]) => { const a = positions[from]; const b = positions[to]; if (!a || !b) return null; const bend = Math.max(46, (b.x - a.x) * .47); const d = `M ${a.x + 47} ${a.y} C ${a.x + bend} ${a.y}, ${b.x - bend} ${b.y}, ${b.x - 47} ${b.y}`; return <g key={`${from}_${to}`}><path d={d} fill="none" stroke={tree.theme.line} strokeOpacity=".18" strokeWidth="8" strokeLinecap="round" /><path d={d} fill="none" stroke={tree.theme.line} strokeWidth="2.6" strokeLinecap="round" /></g>; })}
       {tree.nodes.map((node) => { const p = positions[node.id]; const selected = selectedId === node.id; const mark = selected ? colors.gold : colors[node.accent]; return <g key={node.id} transform={`translate(${p.x} ${p.y})`} className={`route-node ${selected ? "is-selected" : ""}`} role="button" tabIndex={0} aria-label={`${node.label}を選択`} onClick={() => { if (!suppressClickRef.current) onNodeClick(node.id); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onNodeClick(node.id); } }}>

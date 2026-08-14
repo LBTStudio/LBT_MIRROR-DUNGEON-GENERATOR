@@ -43,7 +43,7 @@ assert.equal(legacyTree.nodes.find((node) => node.id === "battle")?.kind, "skirm
 const defaultNamedSkirmish = base.nodes.find((node) => node.id === "skirmish")!;
 const switchedKind = changeNodeKind(defaultNamedSkirmish, "anomaly");
 assert.equal(switchedKind.kind, "anomaly", "地点種別は一度の変更で更新する");
-assert.equal(switchedKind.label, "固有遭遇", "既定名称の地点は種別変更に合わせて名称も更新する");
+assert.equal(switchedKind.label, "変則点", "既定名称の地点は種別変更に合わせて名称も更新する");
 const namedNode = changeNodeKind({ ...defaultNamedSkirmish, label: "見張り台" }, "focused");
 assert.equal(namedNode.label, "見張り台", "利用者が入力した名称は種別変更で上書きしない");
 

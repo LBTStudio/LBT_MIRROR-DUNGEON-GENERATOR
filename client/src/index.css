@@ -209,3 +209,9 @@ button { cursor: pointer; }
 .canvas-nav div, .canvas-nav .canvas-focus { border-color: rgba(92,196,201,.42); }
 .canvas-nav button { background: rgba(13,58,62,.78); border-right-color: rgba(92,196,201,.3); }
 .canvas-nav button:hover { background: rgba(38,123,128,.82); }
+.workspace { align-items: start; }
+.canvas-panel { align-self: start; }
+.canvas-scroll { min-height: 560px; height: min(560px, 54vw); box-shadow: inset 0 0 0 5px rgba(86,211,214,.04), inset 0 0 58px rgba(7,62,67,.26); }
+.route-node:hover circle:first-child, .route-node:focus circle:first-child { filter: drop-shadow(0 0 4px rgba(110,214,220,.48)); }
+.route-node.is-selected circle:first-child { filter: drop-shadow(0 0 7px rgba(215,173,84,.68)); }
+@media (max-width: 640px) { .canvas-scroll { min-height: 392px; height: 392px; } }
