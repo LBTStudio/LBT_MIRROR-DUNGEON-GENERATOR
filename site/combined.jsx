@@ -2318,5 +2318,28 @@ function HelpBar() {
   );
 }
 
-const root = ReactDOM.createRoot(document.getElementById("root"));
-root.render(<App />);
+const rootElement = document.getElementById("root");
+const runtimeParams = new URLSearchParams(window.location.search);
+
+if (runtimeParams.get("mobile-test") === "1") {
+  document.documentElement.classList.add("mobile-test-host");
+  document.title = "Kagami Map Studio — モバイル UI 確認";
+  rootElement.innerHTML = `
+    <main class="mobile-test-shell">
+      <header class="mobile-test-head">
+        <div>
+          <p class="mobile-test-eyebrow">KAGAMI MAP STUDIO</p>
+          <h1 class="mobile-test-title">MOBILE UI CHECK</h1>
+        </div>
+        <a class="mobile-test-open" href="./">通常版を開く</a>
+      </header>
+      <div class="mobile-test-device">
+        <iframe class="mobile-test-frame" title="Kagami Map Studio モバイルUI" src="?mobile-preview=1"></iframe>
+      </div>
+      <p class="mobile-test-note">390 × 844 px の実モバイルレイアウトです。枠内でマス種類の展開、ノード選択、空白ドラッグ、ピンチ相当の操作を確認できます。</p>
+    </main>
+  `;
+} else {
+  const root = ReactDOM.createRoot(rootElement);
+  root.render(<App />);
+}
