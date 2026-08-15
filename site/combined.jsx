@@ -1060,11 +1060,16 @@ function NodeMarker({ node, pos, selected, isPulse, iconSize, showLabel, theme, 
             onDoubleClick={(e) => { e.stopPropagation(); onStartLink?.(node.id); }} />
       {/* 結線ハンドル（選択中のみ） */}
       {selected && (
-        <g transform={`translate(${NODE_W/2 + 4} 0)`}
+        <g transform={`translate(${NODE_W/2 + 16} 0)`}
            className="linkhandle"
            onPointerDown={(e) => { e.stopPropagation(); onStartLink?.(node.id, e); }}>
-          <circle r="10" fill={theme.brass} stroke={theme.background} strokeWidth="2" />
-          <path d="M -4 0 H 4 M 0 -4 V 4" stroke={theme.background} strokeWidth="2.4" strokeLinecap="round" />
+          {/* 経路の暖色とは異なる青緑を、結線操作だけの記号として固定する。 */}
+          {/* 72 SVG px: 58%程度の縮小時でも約42画面pxを確保する透明タップ領域。 */}
+          <circle r="36" fill="transparent" style={{ pointerEvents: "all" }} />
+          <circle r="15" fill="#061b1d" stroke="#62fff3" strokeWidth="2.4" opacity="0.98" />
+          <circle r="10.5" fill="#138f8a" stroke="#bffef5" strokeWidth="1.2" />
+          <path d="M -5.5 0 H 5.5 M 0 -5.5 V 5.5" stroke="#f4fffc" strokeWidth="2.8" strokeLinecap="round" />
+          <circle r="18.5" fill="none" stroke="#49d7ce" strokeWidth="1.2" strokeDasharray="2 4" opacity="0.7" style={{ pointerEvents: "none" }} />
           <title>ここからドラッグ、または隣接列のノードをクリックで結線</title>
         </g>
       )}
@@ -1400,7 +1405,9 @@ const MapCanvas = React.memo(function MapCanvas({
             const style = EDGE_STYLES[e.style] ?? EDGE_STYLES.normal;
             const d = edgePath(a, b);
             const active = selectedId && (e.from === selectedId || e.to === selectedId);
-            const stroke = active ? theme.brass : (e.style === "branch" ? theme.line : (e.style === "hidden" ? theme.edge : theme.lineHi));
+            const stroke = active
+              ? theme.brass
+              : (e.style === "forced" ? theme.lineHi : (e.style === "hidden" ? theme.edge : theme.line));
             const key = `${e.from}__${e.to}`;
             const isHover = hoverEdge === key;
             // 線の中間点(概算): 端点の平均 (ベジェの中間ではないが×ボタンの目印としては十分)
@@ -1417,7 +1424,7 @@ const MapCanvas = React.memo(function MapCanvas({
                  }}>
                 {/* 太い透明ヒット領域 (曲線に沿ってホバーを拾いやすく) */}
                 <path d={d} fill="none" stroke="transparent" strokeWidth={Math.max(20, style.width + 18)} strokeLinecap="round" style={{ pointerEvents: "stroke" }} />
-                <path d={d} fill="none" stroke={stroke} strokeOpacity="0.18" strokeWidth={style.width + 8} strokeLinecap="round" style={{ pointerEvents: "none" }} />
+                <path d={d} fill="none" stroke={stroke} strokeOpacity={e.style === "forced" ? "0.18" : "0.11"} strokeWidth={style.width + 8} strokeLinecap="round" style={{ pointerEvents: "none" }} />
                 <path d={d} fill="none" stroke={stroke}
                       strokeOpacity={isHover ? Math.min(1, style.opacity + 0.15) : style.opacity}
                       strokeWidth={isHover ? style.width + 1 : style.width}

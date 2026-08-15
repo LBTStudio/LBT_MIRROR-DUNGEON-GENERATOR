@@ -260,6 +260,8 @@
     }
     .route-svg .edge { cursor: pointer; transition: filter .18s; }
     .route-svg .edge:hover { filter: drop-shadow(0 0 6px rgba(212, 162, 75, .6)); }
+    .route-svg .linkhandle { cursor: crosshair; filter: drop-shadow(0 0 7px rgba(73, 215, 206, .7)); }
+    .route-svg .linkhandle:hover { filter: drop-shadow(0 0 11px rgba(98, 255, 243, .95)); }
     .route-svg .add-node:hover path { stroke: var(--map-brass); }
     .route-svg .add-node:hover path:last-of-type { stroke: var(--map-brass-hi); }
     .route-svg .col-inserter { cursor: crosshair; }
@@ -508,6 +510,6 @@
 </head>
 <body>
   <div id="root"></div>
-  <script type="text/babel" data-presets="react" src="combined.jsx?rev=theme-scope-1"></script>
+  <script type="text/babel" data-presets="react" src="combined.jsx?rev=link-handle-1"></script>
 </body>
 </html>
