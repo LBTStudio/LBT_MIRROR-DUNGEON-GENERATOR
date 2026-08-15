@@ -1544,6 +1544,7 @@ function Palette({ selectedKind, setSelectedKind, mutate }) {
   React.useEffect(() => { localStorage.setItem("kagami-palette-pos", JSON.stringify(pos)); }, [pos]);
   const dragRef = React.useRef(null);
   const onHeadDown = (e) => {
+    if (e.target.closest("button")) return;
     dragRef.current = { id: e.pointerId, x: e.clientX - pos.x, y: e.clientY - pos.y };
     e.currentTarget.setPointerCapture(e.pointerId);
   };
@@ -1557,7 +1558,7 @@ function Palette({ selectedKind, setSelectedKind, mutate }) {
     <div className="fp palette" style={{ left: pos.x, top: pos.y, width: collapsed ? 48 : 268 }}>
       <div className="fp-head" onPointerDown={onHeadDown} onPointerMove={onHeadMove} onPointerUp={onHeadUp}>
         <span className="fp-title">{collapsed ? "" : "マス種類"}</span>
-        <button className="fp-btn" title={collapsed ? "展開" : "畳む"} onClick={() => setCollapsed(v => !v)}>
+        <button className="fp-btn" type="button" title={collapsed ? "展開" : "畳む"} onPointerDown={e => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); setCollapsed(v => !v); }}>
           {collapsed ? "▶" : "◀"}
         </button>
       </div>
@@ -2147,5 +2148,4 @@ function HelpBar() {
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(<App />);
-
 
