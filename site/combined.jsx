@@ -1751,6 +1751,7 @@ function Inspector({ map, selectedId, mutate }) {
 function ExportDialog({ open, format, theme, onClose, onConfirm }) {
   const [bg, setBg] = React.useState("theme");
   const [scale, setScale] = React.useState(2);
+  const [quality, setQuality] = React.useState(0.92);
   const dialogRef = React.useRef(null);
   React.useEffect(() => {
     if (open && format === "jpeg" && bg === "transparent") setBg("theme");
@@ -1809,10 +1810,22 @@ function ExportDialog({ open, format, theme, onClose, onConfirm }) {
               </p>
             </>
           )}
+          {format === "jpeg" && (
+            <>
+              <label className="i-label">JPEG画質</label>
+              <div className="scale-choices">
+                {[[0.82, "標準"], [0.92, "高画質"], [0.98, "最高"]].map(([value, label]) => (
+                  <button key={value} className={`scale-choice ${quality === value ? "on" : ""}`} onClick={() => setQuality(value)}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
         </div>
         <div className="modal-foot">
           <button className="btn" onClick={onClose}>キャンセル</button>
-          <button className="btn primary" onClick={() => onConfirm({ bg, scale })}>保存</button>
+          <button className="btn primary" onClick={() => onConfirm({ bg, scale, quality })}>保存</button>
         </div>
       </div>
     </div>
@@ -1929,8 +1942,9 @@ function Toolbar({
               <label className="i-label" style={{ marginTop: 8 }}>全体配色</label>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginTop: 4 }}>
                 {[
-                  ["背景", "background"], ["パネル", "panel"], ["文字", "ink"], ["文字補助", "inkDim"],
-                  ["主要線", "lineHi"], ["補助線", "line"], ["強調", "brass"], ["警戒", "blood"], ["警告", "warn"],
+                  ["背景", "background"], ["パネル", "panel"], ["パネル明", "panelHi"], ["枠線", "edge"],
+                  ["文字", "ink"], ["文字補助", "inkDim"], ["主要線", "lineHi"], ["補助線", "line"],
+                  ["強調", "brass"], ["強調明", "brassHi"], ["警戒", "blood"], ["警戒明", "bloodHi"], ["警告", "warn"],
                 ].map(([label, key]) => (
                   <label key={key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, color: "var(--ink-dim)", fontSize: 11 }}>
                     {label}
@@ -2075,7 +2089,7 @@ function App() {
     setTimeout(() => URL.revokeObjectURL(url), 800);
   };
 
-  const performExportImage = async ({ bg, scale, format }) => {
+  const performExportImage = async ({ bg, scale, format, quality }) => {
     const svgText = buildExportSvg({ bg, raster: true });
     if (!svgText) { notify("SVGの生成に失敗しました"); return; }
     const layout = computeLayout(map);
@@ -2093,11 +2107,11 @@ function App() {
       ctx.scale(scale, scale);
       ctx.drawImage(img, 0, 0);
       const mime = format === "jpeg" ? "image/jpeg" : "image/png";
-      const imageBlob = await new Promise(res => canvas.toBlob(res, mime, format === "jpeg" ? 0.92 : undefined));
+      const imageBlob = await new Promise(res => canvas.toBlob(res, mime, format === "jpeg" ? quality : undefined));
       if (!imageBlob) throw new Error("画像Blobを生成できませんでした");
       const label = format === "jpeg" ? "JPEG" : "PNG";
       downloadBlob(`kagami-map@${scale}x.${format === "jpeg" ? "jpg" : "png"}`, imageBlob);
-      notify(`${label}を保存しました (${scale}× / 背景: ${bgLabel(bg)})`);
+      notify(`${label}を保存しました (${scale}× / 背景: ${bgLabel(bg)}${format === "jpeg" ? ` / 画質: ${Math.round(quality * 100)}%` : ""})`);
     } catch {
       notify("画像の生成に失敗しました");
     } finally {
