@@ -450,9 +450,9 @@ const THEME = {
 
 // 配色プレビューではSVG属性を再生成せず、app-rootのCSS変数だけを更新する。
 const CSS_THEME = Object.freeze({
-  background: "var(--bg)", panel: "var(--panel)", panelHi: "var(--panel-2)", edge: "var(--edge)",
-  ink: "var(--ink)", inkDim: "var(--ink-dim)", brass: "var(--brass)", brassHi: "var(--brass-hi)",
-  blood: "var(--blood)", bloodHi: "var(--blood-hi)", warn: "var(--warn)", line: "var(--line)", lineHi: "var(--line-hi)",
+  background: "var(--map-bg)", panel: "var(--map-panel)", panelHi: "var(--map-panel-2)", edge: "var(--map-edge)",
+  ink: "var(--map-ink)", inkDim: "var(--map-ink-dim)", brass: "var(--map-brass)", brassHi: "var(--map-brass-hi)",
+  blood: "var(--map-blood)", bloodHi: "var(--map-blood-hi)", warn: "var(--map-warn)", line: "var(--map-line)", lineHi: "var(--map-line-hi)",
 });
 
 const THEME_PRESETS = [
@@ -463,11 +463,11 @@ const THEME_PRESETS = [
 
 function themeToCssVars(theme) {
   return {
-    "--bg": theme.background, "--panel": theme.panel, "--panel-2": theme.panelHi,
-    "--edge": theme.edge, "--ink": theme.ink, "--ink-dim": theme.inkDim,
-    "--brass": theme.brass, "--brass-hi": theme.brassHi,
-    "--blood": theme.blood, "--blood-hi": theme.bloodHi,
-    "--warn": theme.warn, "--line": theme.line, "--line-hi": theme.lineHi,
+    "--map-bg": theme.background, "--map-panel": theme.panel, "--map-panel-2": theme.panelHi,
+    "--map-edge": theme.edge, "--map-ink": theme.ink, "--map-ink-dim": theme.inkDim,
+    "--map-brass": theme.brass, "--map-brass-hi": theme.brassHi,
+    "--map-blood": theme.blood, "--map-blood-hi": theme.bloodHi,
+    "--map-warn": theme.warn, "--map-line": theme.line, "--map-line-hi": theme.lineHi,
   };
 }
 
@@ -767,6 +767,7 @@ const mapOps = {
     map.nodes = b.nodes;
     map.edges = b.edges;
     map.title = b.title;
+    map.theme = b.theme;
   },
   /*
    * 鏡式自動接続：公開マップに見られる扇状分岐・持続レーン・菱形再合流を組み立てる。
@@ -2138,6 +2139,7 @@ function App() {
   const [notice, setNotice] = React.useState("");
   const [showThumb, setShowThumb] = React.useState(true);
   const [showLabels, setShowLabels] = React.useState(true);
+  const [themeResetKey, setThemeResetKey] = React.useState(0);
   // エクスポート・ダイアログ: format∈{png,jpeg,null}
   const [exportModal, setExportModal] = React.useState(null);
   const activeTheme = map.theme;
@@ -2269,6 +2271,20 @@ function App() {
     notify("鏡式の分岐・持続・再合流で接続を自動生成しました");
   };
 
+  const onReset = () => {
+    if (!confirm("マップとマップ配色を初期状態に戻します。よろしいですか？")) return;
+    const fresh = baseMap();
+    const root = document.querySelector(".app-root");
+    if (root) {
+      root.removeAttribute("data-theme-previewing");
+      Object.entries(themeToCssVars(fresh.theme)).forEach(([name, value]) => root.style.setProperty(name, value));
+    }
+    replace(fresh);
+    setSelectedId(null);
+    setThemeResetKey(key => key + 1);
+    notify("マップとマップ配色を初期状態へ戻しました");
+  };
+
   const onFit = () => {
     window.__kagamiFit?.();
   };
@@ -2277,13 +2293,13 @@ function App() {
 
   return (
     <div className="app-root" style={themeStyle}>
-      <Toolbar
+      <Toolbar key={themeResetKey}
         map={map} mutate={mutate} replace={replace}
         undo={undo} redo={redo} canUndo={canUndo} canRedo={canRedo}
         onExportPng={() => setExportModal("png")}
         onExportJpeg={() => setExportModal("jpeg")}
         onExportJson={onExportJson}
-        onReset={() => { if (confirm("マップを初期状態に戻します。よろしいですか？")) mutate(d => mapOps.clear(d)); }}
+        onReset={onReset}
         onFit={onFit}
         onAutoConnect={onAutoConnect}
         notify={notify}

@@ -25,6 +25,20 @@
       --blood-hi: #e35b53;
       --warn: #f0d24b;
       --line: #7a5a48;
+      /* マップ表示専用。ツールバー・編集パネルは上記の固定UI配色を使う。 */
+      --map-bg: #0b0a0d;
+      --map-panel: #161318;
+      --map-panel-2: #1e1a20;
+      --map-edge: #2c262e;
+      --map-ink: #eae3d5;
+      --map-ink-dim: #8a8375;
+      --map-brass: #d4a24b;
+      --map-brass-hi: #f4c876;
+      --map-blood: #c8443c;
+      --map-blood-hi: #e35b53;
+      --map-warn: #f0d24b;
+      --map-line: #7a5a48;
+      --map-line-hi: #d4a24b;
       --shadow: 0 8px 32px rgba(0,0,0,.55);
       --shadow-l: 0 2px 12px rgba(0,0,0,.4);
     }
@@ -62,10 +76,6 @@
     }
     /* 色スライド中は装飾合成を一時停止し、毎フレームの配色プレビューを優先する。 */
     .app-root[data-theme-previewing="true"]::before { opacity: 0; }
-    .app-root[data-theme-previewing="true"] .toolbar,
-    .app-root[data-theme-previewing="true"] .fp,
-    .app-root[data-theme-previewing="true"] .mini-map,
-    .app-root[data-theme-previewing="true"] .canvas-controls { backdrop-filter: none; }
     .app-root[data-theme-previewing="true"] .canvas-stage svg.route-svg { filter: none; }
 
     /* ------ Toolbar (上部) ------ */
@@ -194,7 +204,7 @@
 
     /* 中央クロスヘア（縮小時に見つけやすく） */
     .center-crosshair { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); pointer-events: none; opacity: .18; }
-    .center-crosshair span { display: block; position: absolute; background: var(--brass); }
+    .center-crosshair span { display: block; position: absolute; background: var(--map-brass); }
     .center-crosshair span:nth-child(1) { width: 24px; height: 1px; left: -12px; top: 0; }
     .center-crosshair span:nth-child(2) { width: 1px; height: 24px; left: 0; top: -12px; }
 
@@ -250,11 +260,11 @@
     }
     .route-svg .edge { cursor: pointer; transition: filter .18s; }
     .route-svg .edge:hover { filter: drop-shadow(0 0 6px rgba(212, 162, 75, .6)); }
-    .route-svg .add-node:hover path { stroke: var(--brass); }
-    .route-svg .add-node:hover path:last-of-type { stroke: var(--brass-hi); }
+    .route-svg .add-node:hover path { stroke: var(--map-brass); }
+    .route-svg .add-node:hover path:last-of-type { stroke: var(--map-brass-hi); }
     .route-svg .col-inserter { cursor: crosshair; }
     .route-svg .linkhandle { cursor: crosshair; }
-    .stage-guide { stroke: var(--brass); stroke-opacity: .15; stroke-width: 1; stroke-dasharray: 2 6; }
+    .stage-guide { stroke: var(--map-brass); stroke-opacity: .15; stroke-width: 1; stroke-dasharray: 2 6; }
 
     /* ------ Floating Panels ------ */
     .fp {
@@ -498,6 +508,6 @@
 </head>
 <body>
   <div id="root"></div>
-  <script type="text/babel" data-presets="react" src="combined.jsx?rev=mirror-lanes-1"></script>
+  <script type="text/babel" data-presets="react" src="combined.jsx?rev=theme-scope-1"></script>
 </body>
 </html>
