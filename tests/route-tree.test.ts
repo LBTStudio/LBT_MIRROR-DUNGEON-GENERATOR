@@ -18,25 +18,31 @@ assert.equal(migratedTheme.theme.line, "#70d9df", "旧標準経路色は新し�
 const danteMigratedTheme = normalize({ nodes: base.nodes, theme: { background: "#16090c", line: "#9c3142", showLabels: false, iconSize: 27 } });
 assert.equal(danteMigratedTheme.theme.background, "#07171b", "直前の標準背景は地図テーマへ移行する");
 assert.equal(danteMigratedTheme.theme.line, "#70d9df", "直前の標準経路色は地図テーマへ移行する");
-assert.equal(base.edges.length, 16, "初期テンプレートは全主要種別を自動接続する16本の航路を生成する");
+assert.equal(base.edges.length, 14, "初期テンプレートは上・中・下の隣接スロット規則で14本の航路を生成する");
 
 const byId = new Map(base.nodes.map((node) => [node.id, node]));
 for (const [from, to] of base.edges) {
   assert.ok(byId.get(from)!.stage < byId.get(to)!.stage, "接続は必ず右方向へ進む");
   assert.equal(byId.get(to)!.stage, byId.get(from)!.stage + 1, "接続は隣り合う列だけを結ぶ");
 }
+assert.ok(base.edges.some(([from, to]) => from === "skirmish" && to === "focused"), "上段地点は次列の上段へ進む");
+assert.ok(base.edges.some(([from, to]) => from === "skirmish" && to === "elite"), "上段地点は次列の中央へ分岐できる");
+assert.equal(base.edges.some(([from, to]) => from === "skirmish" && to === "anomaly"), false, "上段地点は次列の下段へ交差しない");
+assert.ok(base.edges.some(([from, to]) => from === "event" && to === "anomaly"), "中央地点は次列の全スロットへ分岐できる");
+assert.equal(base.edges.some(([from, to]) => from === "rest" && to === "focused"), false, "下段地点は次列の上段へ交差しない");
 
 const customTree = normalize({
   ...base,
-  nodes: [...base.nodes, { id: "custom", stage: 2, kind: "custom", icon: "◆", label: "鍵の間", accent: "teal" }],
+  nodes: [...base.nodes, { id: "custom", stage: 2, slot: 3, kind: "custom", icon: "◆", label: "鍵の間", accent: "teal" }],
   edges: [["guardian", "origin"]],
 });
 assert.equal(customTree.edges.some(([from, to]) => from === "guardian" && to === "origin"), false, "保存済みの後戻り接続は採用しない");
-assert.equal(customTree.edges.some(([from, to]) => from === "skirmish" && to === "custom"), true, "追加地点は前列の全地点から自動接続される");
+assert.equal(customTree.edges.some(([from, to]) => from === "rest" && to === "custom"), true, "追加された下段地点は前列下段から自動接続される");
+assert.equal(customTree.edges.some(([from, to]) => from === "skirmish" && to === "custom"), false, "追加された下段地点へ上段から不要な交差を作らない");
 assert.equal(customTree.edges.some(([from, to]) => from === "custom" && to === "supply"), true, "追加地点は次列の全地点へ自動接続される");
 
 const legacyTree = normalize({
-  nodes: [{ id: "start", stage: 0, kind: "start", label: "開始", accent: "teal" }, { id: "battle", stage: 1, kind: "battle", label: "戦闘", accent: "slate" }],
+  nodes: [{ id: "start", stage: 0, slot: 0, kind: "start", label: "開始", accent: "teal" }, { id: "battle", stage: 1, slot: 0, kind: "battle", label: "戦闘", accent: "slate" }],
 });
 assert.equal(legacyTree.nodes.find((node) => node.id === "start")?.kind, "origin", "旧形式の開始地点を起点へ移行する");
 assert.equal(legacyTree.nodes.find((node) => node.id === "battle")?.kind, "skirmish", "旧形式の戦闘地点を小規模交戦へ移行する");
