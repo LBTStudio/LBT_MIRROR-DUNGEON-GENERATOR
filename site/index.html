@@ -60,6 +60,13 @@
       pointer-events: none;
       mix-blend-mode: overlay;
     }
+    /* 色スライド中は装飾合成を一時停止し、毎フレームの配色プレビューを優先する。 */
+    .app-root[data-theme-previewing="true"]::before { opacity: 0; }
+    .app-root[data-theme-previewing="true"] .toolbar,
+    .app-root[data-theme-previewing="true"] .fp,
+    .app-root[data-theme-previewing="true"] .mini-map,
+    .app-root[data-theme-previewing="true"] .canvas-controls { backdrop-filter: none; }
+    .app-root[data-theme-previewing="true"] .canvas-stage svg.route-svg { filter: none; }
 
     /* ------ Toolbar (上部) ------ */
     .toolbar {
@@ -491,6 +498,6 @@
 </head>
 <body>
   <div id="root"></div>
-  <script type="text/babel" data-presets="react" src="combined.jsx?rev=autolink-local-1"></script>
+  <script type="text/babel" data-presets="react" src="combined.jsx?rev=palette-raf-1"></script>
 </body>
 </html>

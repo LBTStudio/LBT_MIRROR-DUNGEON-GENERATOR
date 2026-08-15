@@ -1898,7 +1898,7 @@ function Toolbar({
   onReset, onFit, onAutoConnect,
   notify, showLabels, setShowLabels,
   showThumb, setShowThumb,
-  activeTheme, onThemePreview, onThemeCommit
+  activeTheme, onThemeCommit
 }) {
   const fileRef = React.useRef(null);
   const [showTheme, setShowTheme] = React.useState(false);
@@ -1907,19 +1907,47 @@ function Toolbar({
   const exportRef = React.useRef(null);
   const previewThemeRef = React.useRef(activeTheme);
   const themeCommitTimer = React.useRef(null);
+  const themePreviewFrame = React.useRef(0);
 
   React.useEffect(() => {
     previewThemeRef.current = activeTheme;
   }, [activeTheme]);
-  React.useEffect(() => () => window.clearTimeout(themeCommitTimer.current), []);
+  React.useEffect(() => () => {
+    window.clearTimeout(themeCommitTimer.current);
+    window.cancelAnimationFrame(themePreviewFrame.current);
+  }, []);
+
+  const applyPreviewVars = (theme) => {
+    const root = document.querySelector(".app-root");
+    if (!root) return;
+    root.dataset.themePreviewing = "true";
+    Object.entries(themeToCssVars(theme)).forEach(([name, value]) => root.style.setProperty(name, value));
+  };
+
+  const commitPreviewTheme = () => {
+    window.clearTimeout(themeCommitTimer.current);
+    window.cancelAnimationFrame(themePreviewFrame.current);
+    themePreviewFrame.current = 0;
+    document.querySelector(".app-root")?.removeAttribute("data-theme-previewing");
+    onThemeCommit(previewThemeRef.current);
+  };
 
   const previewTheme = (changes, immediate = false) => {
     const next = { ...previewThemeRef.current, ...changes };
     previewThemeRef.current = next;
-    onThemePreview(next);
     window.clearTimeout(themeCommitTimer.current);
-    if (immediate) onThemeCommit(next);
-    else themeCommitTimer.current = window.setTimeout(() => onThemeCommit(next), 180);
+    if (immediate) {
+      commitPreviewTheme();
+      return;
+    }
+    // 色選択は高頻度イベント。最新値だけを次フレームにCSS変数へ反映し、Reactの再描画は確定時まで行わない。
+    if (!themePreviewFrame.current) {
+      themePreviewFrame.current = window.requestAnimationFrame(() => {
+        themePreviewFrame.current = 0;
+        applyPreviewVars(previewThemeRef.current);
+      });
+    }
+    themeCommitTimer.current = window.setTimeout(commitPreviewTheme, 180);
   };
 
   React.useEffect(() => {
@@ -2002,7 +2030,10 @@ function Toolbar({
           ラベル
         </label>
         <div ref={themeRef} style={{ position: "relative" }}>
-          <button className="tb-btn" onClick={() => setShowTheme(v => !v)} title="表示テーマ">テーマ</button>
+          <button className="tb-btn" onClick={() => {
+            if (showTheme) commitPreviewTheme();
+            setShowTheme(v => !v);
+          }} title="表示テーマ">テーマ</button>
           {showTheme && (
             <div className="tb-popover">
               <label className="i-label">アイコンサイズ</label>
@@ -2042,7 +2073,10 @@ function Toolbar({
 
       <div className="tb-group">
         <div ref={exportRef} style={{ position: "relative" }}>
-          <button className="tb-btn tb-btn-primary" onClick={() => setShowExport(v => !v)} title="画像/データとして保存">保存 ▾</button>
+          <button className="tb-btn tb-btn-primary" onClick={() => {
+            commitPreviewTheme();
+            setShowExport(v => !v);
+          }} title="画像/データとして保存">保存 ▾</button>
           {showExport && (
             <div className="tb-popover tb-popover-export">
               <button className="popover-row" onClick={() => { setShowExport(false); onExportPng(); }}>
@@ -2087,14 +2121,12 @@ function App() {
   const [notice, setNotice] = React.useState("");
   const [showThumb, setShowThumb] = React.useState(true);
   const [showLabels, setShowLabels] = React.useState(true);
-  const [themePreview, setThemePreview] = React.useState(null);
   // エクスポート・ダイアログ: format∈{png,jpeg,null}
   const [exportModal, setExportModal] = React.useState(null);
-  const activeTheme = themePreview ?? map.theme;
-  const activeMap = themePreview ? { ...map, theme: activeTheme } : map;
+  const activeTheme = map.theme;
+  const activeMap = map;
   const commitTheme = React.useCallback((theme) => {
     replaceTheme(theme);
-    setThemePreview(null);
   }, [replaceTheme]);
 
   const notify = React.useCallback((text) => {
@@ -2240,7 +2272,7 @@ function App() {
         notify={notify}
         showLabels={showLabels} setShowLabels={setShowLabels}
         showThumb={showThumb} setShowThumb={setShowThumb}
-        activeTheme={activeTheme} onThemePreview={setThemePreview} onThemeCommit={commitTheme}
+        activeTheme={activeTheme} onThemeCommit={commitTheme}
       />
       <MapCanvas
         map={map} selectedId={selectedId} setSelectedId={setSelectedId}
