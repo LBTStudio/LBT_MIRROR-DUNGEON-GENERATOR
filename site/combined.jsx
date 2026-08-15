@@ -290,9 +290,7 @@ const IconEvent = ({ ink = "#eae3d5", accent = "#d4a24b" }) => (
    ─ 自動ドアは中央の縦仕切り + 上下のガラス反射線
    ─ 両サイドウィンドウは十字グリッドのガラス格子で工業的な質感
    ──────────────────────────────── */
-const IconSupply = ({ ink = "#eae3d5" }) => {
-  const dark = "#0b0a0d";        // 深黒 (窓・ドアの奥)
-  const midGray = "#3a333a";     // 濃灰 (看板の中央ストライプ)
+const IconSupply = ({ ink = "#eae3d5", dark = "#0b0a0d", midGray = "#3a333a" }) => {
   return (
     <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
       <IconDefs id="sp" />
@@ -535,6 +533,16 @@ function baseMap() {
     edges,
     theme: {
       background: THEME.bg,
+      panel: THEME.panel,
+      panelHi: THEME.panelHi,
+      edge: THEME.edge,
+      ink: THEME.ink,
+      inkDim: THEME.inkDim,
+      brass: THEME.brass,
+      brassHi: THEME.brass,
+      blood: THEME.blood,
+      bloodHi: THEME.bloodHi,
+      warn: THEME.warn,
       line: THEME.line,
       lineHi: THEME.lineHi,
       showLabels: true,
@@ -571,6 +579,16 @@ function normalizeMap(input) {
     edges,
     theme: {
       background: String(input.theme?.background ?? THEME.bg),
+      panel: String(input.theme?.panel ?? THEME.panel),
+      panelHi: String(input.theme?.panelHi ?? THEME.panelHi),
+      edge: String(input.theme?.edge ?? THEME.edge),
+      ink: String(input.theme?.ink ?? THEME.ink),
+      inkDim: String(input.theme?.inkDim ?? THEME.inkDim),
+      brass: String(input.theme?.brass ?? THEME.brass),
+      brassHi: String(input.theme?.brassHi ?? THEME.brass),
+      blood: String(input.theme?.blood ?? THEME.blood),
+      bloodHi: String(input.theme?.bloodHi ?? THEME.bloodHi),
+      warn: String(input.theme?.warn ?? THEME.warn),
       line: String(input.theme?.line ?? THEME.line),
       lineHi: String(input.theme?.lineHi ?? THEME.lineHi),
       showLabels: input.theme?.showLabels === undefined ? true : Boolean(input.theme.showLabels),
@@ -924,18 +942,18 @@ function edgePath(a, b) {
 }
 
 // ノードレンダラー
-function NodeMarker({ node, pos, selected, isPulse, iconSize, showLabel, onSelect, onStartLink, onRemove }) {
+function NodeMarker({ node, pos, selected, isPulse, iconSize, showLabel, theme, onSelect, onStartLink, onRemove }) {
   const kindDef = KIND_INDEX[node.kind] ?? KIND_INDEX.skirmish;
   const Icon = IconMap[node.kind] ?? IconMap.skirmish;
   const tone = kindDef.tone;
-  const ringColor = tone === "blood" ? THEME.blood : tone === "brass" ? THEME.brass : THEME.ink;
-  const ringGlow = tone === "blood" ? THEME.bloodGlow : THEME.goldGlow;
+  const ringColor = tone === "blood" ? theme.blood : tone === "brass" ? theme.brass : theme.ink;
+  const ringGlow = tone === "blood" ? theme.bloodHi : theme.brass;
 
   return (
     <g transform={`translate(${pos.x} ${pos.y})`} className={`nd ${selected ? "sel" : ""} ${isPulse ? "pulse" : ""}`}>
       {/* 選択リング */}
       {selected && (
-        <circle r={NODE_W/2 + 6} fill="none" stroke={THEME.brass} strokeWidth="2" strokeDasharray="3 4">
+        <circle r={NODE_W/2 + 6} fill="none" stroke={theme.brass} strokeWidth="2" strokeDasharray="3 4">
           <animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="24s" repeatCount="indefinite" />
         </circle>
       )}
@@ -943,7 +961,7 @@ function NodeMarker({ node, pos, selected, isPulse, iconSize, showLabel, onSelec
       <g>
         <path
           d="M -44 -24 L -30 -44 H 30 L 44 -24 V 24 L 30 44 H -30 L -44 24 Z"
-          fill={THEME.panel}
+          fill={theme.panel}
           stroke={ringColor}
           strokeWidth={selected ? 3.4 : 2.4}
           strokeLinejoin="round"
@@ -957,16 +975,17 @@ function NodeMarker({ node, pos, selected, isPulse, iconSize, showLabel, onSelec
       {/* アイコン */}
       <foreignObject x={-iconSize/2} y={-iconSize/2} width={iconSize} height={iconSize} style={{ pointerEvents: "none" }}>
         <div xmlns="http://www.w3.org/1999/xhtml" style={{ width: "100%", height: "100%" }}>
-          <Icon ink={THEME.ink} accent={tone === "blood" ? THEME.bloodHi : THEME.brass} warn={THEME.warn} />
+          <Icon ink={theme.ink} dark={theme.background} midGray={theme.panelHi}
+                accent={tone === "blood" ? theme.bloodHi : theme.brass} warn={theme.warn} />
         </div>
       </foreignObject>
       {/* テキスト併記（アイコン識別を担保） */}
       {showLabel && (
         <g style={{ pointerEvents: "none" }}>
           <rect x={-40} y={NODE_H/2 + 6} width={80} height={20} rx={4}
-                fill={THEME.bg} fillOpacity="0.85"
+                fill={theme.background} fillOpacity="0.85"
                 stroke={ringColor} strokeOpacity="0.4" strokeWidth="1" />
-          <text x={0} y={NODE_H/2 + 20} textAnchor="middle" fill={THEME.ink}
+          <text x={0} y={NODE_H/2 + 20} textAnchor="middle" fill={theme.ink}
                 fontSize="12" fontWeight="600"
                 style={{ fontFamily: "'Noto Sans JP', sans-serif" }}>
             {node.label}
@@ -983,8 +1002,8 @@ function NodeMarker({ node, pos, selected, isPulse, iconSize, showLabel, onSelec
         <g transform={`translate(${NODE_W/2 + 4} 0)`}
            className="linkhandle"
            onPointerDown={(e) => { e.stopPropagation(); onStartLink?.(node.id, e); }}>
-          <circle r="10" fill={THEME.brass} stroke={THEME.bg} strokeWidth="2" />
-          <path d="M -4 0 H 4 M 0 -4 V 4" stroke={THEME.bg} strokeWidth="2.4" strokeLinecap="round" />
+          <circle r="10" fill={theme.brass} stroke={theme.background} strokeWidth="2" />
+          <path d="M -4 0 H 4 M 0 -4 V 4" stroke={theme.background} strokeWidth="2.4" strokeLinecap="round" />
           <title>ここからドラッグ、または隣接列のノードをクリックで結線</title>
         </g>
       )}
@@ -992,7 +1011,7 @@ function NodeMarker({ node, pos, selected, isPulse, iconSize, showLabel, onSelec
       {selected && (
         <g transform={`translate(${NODE_W/2 - 12} ${-NODE_H/2 - 2})`}
            onPointerDown={(e) => { e.stopPropagation(); onRemove?.(node.id); }}>
-          <circle r="11" fill={THEME.blood} stroke={THEME.bg} strokeWidth="2" style={{ cursor: "pointer" }} />
+          <circle r="11" fill={theme.blood} stroke={theme.background} strokeWidth="2" style={{ cursor: "pointer" }} />
           <path d="M -4.5 -4.5 L 4.5 4.5 M 4.5 -4.5 L -4.5 4.5" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" />
           <title>このマスを削除</title>
         </g>
@@ -1227,9 +1246,9 @@ function MapCanvas({
           <rect data-role="canvas-bg" width={layout.width} height={layout.height} fill={map.theme.background} rx="14" />
           <defs>
             <linearGradient id="colgrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={THEME.brass} stopOpacity="0" />
-              <stop offset="50%" stopColor={THEME.brass} stopOpacity="0.25" />
-              <stop offset="100%" stopColor={THEME.brass} stopOpacity="0" />
+              <stop offset="0%" stopColor={map.theme.brass} stopOpacity="0" />
+              <stop offset="50%" stopColor={map.theme.brass} stopOpacity="0.25" />
+              <stop offset="100%" stopColor={map.theme.brass} stopOpacity="0" />
             </linearGradient>
           </defs>
 
@@ -1247,13 +1266,13 @@ function MapCanvas({
             return (
               <g key={`ch${s}`}>
                 <text x={x} y={26} textAnchor="middle"
-                      fill={isLast ? THEME.blood : THEME.brass}
+                      fill={isLast ? map.theme.blood : map.theme.brass}
                       fontSize="11" letterSpacing="0.18em" fontWeight="700"
                       style={{ fontFamily: "'Bebas Neue', sans-serif" }}>
                   STAGE {String(s + 1).padStart(2, "0")}
                 </text>
                 <text x={x} y={40} textAnchor="middle"
-                      fill={THEME.inkDim} fontSize="9" letterSpacing="0.1em"
+                      fill={map.theme.inkDim} fontSize="9" letterSpacing="0.1em"
                       style={{ fontFamily: "'JetBrains Mono', monospace" }}>
                   {s + 1} / {total}
                 </text>
@@ -1311,7 +1330,7 @@ function MapCanvas({
             const style = EDGE_STYLES[e.style] ?? EDGE_STYLES.normal;
             const d = edgePath(a, b);
             const active = selectedId && (e.from === selectedId || e.to === selectedId);
-            const stroke = active ? THEME.brass : (e.style === "branch" ? "#a68767" : (e.style === "hidden" ? "#5c4a3f" : THEME.lineHi));
+            const stroke = active ? map.theme.brass : (e.style === "branch" ? map.theme.line : (e.style === "hidden" ? map.theme.edge : map.theme.lineHi));
             const key = `${e.from}__${e.to}`;
             const isHover = hoverEdge === key;
             // 線の中間点(概算): 端点の平均 (ベジェの中間ではないが×ボタンの目印としては十分)
@@ -1335,7 +1354,7 @@ function MapCanvas({
                       strokeLinecap="round" strokeDasharray={style.dash}
                       style={{ pointerEvents: "none" }} />
                 {e.style === "forced" && (
-                  <path d={d} fill="none" stroke={THEME.bg} strokeWidth={style.width - 2.2} strokeLinecap="round" style={{ pointerEvents: "none" }} />
+                  <path d={d} fill="none" stroke={map.theme.background} strokeWidth={style.width - 2.2} strokeLinecap="round" style={{ pointerEvents: "none" }} />
                 )}
                 <title>{style.label}経路（クリック: 種類切替 / 中央の×で削除）</title>
 
@@ -1440,6 +1459,7 @@ function MapCanvas({
                   isPulse={!selectedId && node.kind === "origin"}
                   iconSize={map.theme.iconSize + 12}
                   showLabel={showLabels || map.theme.showLabels}
+                  theme={map.theme}
                   onSelect={(id) => setSelectedId(id)}
                   onStartLink={(id, e) => startLink(id, e)}
                   onRemove={(id) => mutate(d => mapOps.removeNode(d, id))}
@@ -1728,10 +1748,13 @@ function Inspector({ map, selectedId, mutate }) {
 // ─────────────────────────────────────
 // エクスポート・ダイアログ
 // ─────────────────────────────────────
-function ExportDialog({ open, format, onClose, onConfirm }) {
+function ExportDialog({ open, format, theme, onClose, onConfirm }) {
   const [bg, setBg] = React.useState("theme");
   const [scale, setScale] = React.useState(2);
   const dialogRef = React.useRef(null);
+  React.useEffect(() => {
+    if (open && format === "jpeg" && bg === "transparent") setBg("theme");
+  }, [open, format, bg]);
   React.useEffect(() => {
     if (!open) return;
     const onDown = (e) => { if (dialogRef.current && !dialogRef.current.contains(e.target)) onClose(); };
@@ -1742,7 +1765,7 @@ function ExportDialog({ open, format, onClose, onConfirm }) {
   }, [open, onClose]);
   if (!open) return null;
 
-  const formatLabel = format === "svg" ? "SVG" : format === "png" ? "PNG" : "PDF";
+  const formatLabel = format === "jpeg" ? "JPEG" : "PNG";
   return (
     <div className="modal-mask">
       <div className="modal" ref={dialogRef}>
@@ -1754,22 +1777,24 @@ function ExportDialog({ open, format, onClose, onConfirm }) {
           <label className="i-label">背景</label>
           <div className="bg-choices">
             <button className={`bg-choice ${bg === "theme" ? "on" : ""}`} onClick={() => setBg("theme")}>
-              <div className="bg-preview" style={{ background: THEME.bg }} />
+              <div className="bg-preview" style={{ background: theme.background }} />
               <span>テーマ背景</span>
               <small>ダーク配色をそのまま</small>
             </button>
-            <button className={`bg-choice ${bg === "transparent" ? "on" : ""}`} onClick={() => setBg("transparent")}>
-              <div className="bg-preview bg-check" />
-              <span>透過</span>
-              <small>{format === "png" ? "PNG透過 / SVG無地" : "SVGの背景を除去"}</small>
-            </button>
+            {format === "png" && (
+              <button className={`bg-choice ${bg === "transparent" ? "on" : ""}`} onClick={() => setBg("transparent")}>
+                <div className="bg-preview bg-check" />
+                <span>透過</span>
+                <small>PNG透過</small>
+              </button>
+            )}
             <button className={`bg-choice ${bg === "white" ? "on" : ""}`} onClick={() => setBg("white")}>
               <div className="bg-preview" style={{ background: "#f8f6ef" }} />
               <span>白背景</span>
               <small>紙・印刷向け</small>
             </button>
           </div>
-          {format === "png" && (
+          {(format === "png" || format === "jpeg") && (
             <>
               <label className="i-label">解像度倍率</label>
               <div className="scale-choices">
@@ -1780,7 +1805,7 @@ function ExportDialog({ open, format, onClose, onConfirm }) {
                 ))}
               </div>
               <p className="modal-hint">
-                {scale}× → 実寸 ×{scale}倍のPNG（{scale === 4 ? "高精細印刷向け" : scale === 1 ? "軽量" : "標準"}）
+                {scale}× → 実寸 ×{scale}倍の{formatLabel}（{format === "jpeg" ? "高品質JPEG" : scale === 4 ? "高精細印刷向け" : scale === 1 ? "軽量" : "標準"}）
               </p>
             </>
           )}
@@ -1799,7 +1824,7 @@ function ExportDialog({ open, format, onClose, onConfirm }) {
 // ─────────────────────────────────────
 function Toolbar({
   map, mutate, replace, undo, redo, canUndo, canRedo,
-  onExportSvg, onExportPng, onExportJson,
+  onExportPng, onExportJpeg, onExportJson,
   onReset, onFit, onAutoConnect,
   notify, showLabels, setShowLabels,
   showThumb, setShowThumb
@@ -1826,7 +1851,7 @@ function Toolbar({
       try {
         const json = JSON.parse(String(reader.result));
         replace(json);
-        notify("マップを読み込みました");
+        notify("JSONセーブを読み込みました");
       } catch { notify("読み込みに失敗しました"); }
       if (fileRef.current) fileRef.current.value = "";
     };
@@ -1901,11 +1926,18 @@ function Toolbar({
                        onChange={e => setShowThumb(e.target.checked)} />
                 ミニマップを表示
               </label>
-              <label className="i-label" style={{ marginTop: 8 }}>接続線カラー</label>
-              <div className="tb-swatches">
-                {["#d4a24b","#c8443c","#7ec9ff","#eae3d5"].map(c => (
-                  <button key={c} style={{ background: c }} className={`sw ${map.theme.lineHi === c ? "on" : ""}`}
-                          onClick={() => replace({ ...map, theme: { ...map.theme, lineHi: c } })} />
+              <label className="i-label" style={{ marginTop: 8 }}>全体配色</label>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginTop: 4 }}>
+                {[
+                  ["背景", "background"], ["パネル", "panel"], ["文字", "ink"], ["文字補助", "inkDim"],
+                  ["主要線", "lineHi"], ["補助線", "line"], ["強調", "brass"], ["警戒", "blood"], ["警告", "warn"],
+                ].map(([label, key]) => (
+                  <label key={key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, color: "var(--ink-dim)", fontSize: 11 }}>
+                    {label}
+                    <input type="color" value={map.theme[key]}
+                           onChange={e => replace({ ...map, theme: { ...map.theme, [key]: e.target.value } })}
+                           title={`${label}の色`} style={{ width: 28, height: 22, padding: 0, border: 0, background: "transparent", cursor: "pointer" }} />
+                  </label>
                 ))}
               </div>
             </div>
@@ -1920,20 +1952,20 @@ function Toolbar({
             <div className="tb-popover tb-popover-export">
               <button className="popover-row" onClick={() => { setShowExport(false); onExportPng(); }}>
                 <span className="pr-name">PNG 画像</span>
-                <span className="pr-desc">背景・解像度を選べる</span>
+                <span className="pr-desc">透過・背景・解像度を選べる</span>
               </button>
-              <button className="popover-row" onClick={() => { setShowExport(false); onExportSvg(); }}>
-                <span className="pr-name">SVG ベクター</span>
-                <span className="pr-desc">背景の透過選択可</span>
+              <button className="popover-row" onClick={() => { setShowExport(false); onExportJpeg(); }}>
+                <span className="pr-name">JPEG 画像</span>
+                <span className="pr-desc">背景色・画質・解像度を選べる</span>
               </button>
               <button className="popover-row" onClick={() => { setShowExport(false); onExportJson(); }}>
-                <span className="pr-name">JSON</span>
-                <span className="pr-desc">編集データを保存</span>
+                <span className="pr-name">JSON セーブファイル</span>
+                <span className="pr-desc">ノード・接続・配色設定を保存</span>
               </button>
               <div className="popover-sep" />
               <button className="popover-row" onClick={() => { setShowExport(false); fileRef.current?.click(); }}>
-                <span className="pr-name">JSON を読込</span>
-                <span className="pr-desc">保存済みマップを開く</span>
+                <span className="pr-name">JSON セーブを読込</span>
+                <span className="pr-desc">保存済みマップを復元</span>
               </button>
               <input ref={fileRef} type="file" accept="application/json" onChange={handleImport} style={{ display: "none" }} />
             </div>
@@ -1960,7 +1992,7 @@ function App() {
   const [notice, setNotice] = React.useState("");
   const [showThumb, setShowThumb] = React.useState(true);
   const [showLabels, setShowLabels] = React.useState(true);
-  // エクスポート・ダイアログ: format∈{svg,png,null}
+  // エクスポート・ダイアログ: format∈{png,jpeg,null}
   const [exportModal, setExportModal] = React.useState(null);
 
   const notify = React.useCallback((text) => {
@@ -2043,14 +2075,7 @@ function App() {
     setTimeout(() => URL.revokeObjectURL(url), 800);
   };
 
-  const performExportSvg = ({ bg }) => {
-    const svgText = buildExportSvg({ bg });
-    if (!svgText) { notify("SVGの生成に失敗しました"); return; }
-    downloadBlob("kagami-map.svg", new Blob([svgText], { type: "image/svg+xml" }));
-    notify(`SVGを保存しました (背景: ${bgLabel(bg)})`);
-  };
-
-  const performExportPng = async ({ bg, scale }) => {
+  const performExportImage = async ({ bg, scale, format }) => {
     const svgText = buildExportSvg({ bg, raster: true });
     if (!svgText) { notify("SVGの生成に失敗しました"); return; }
     const layout = computeLayout(map);
@@ -2067,12 +2092,14 @@ function App() {
       if (bg === "white") { ctx.fillStyle = "#f8f6ef"; ctx.fillRect(0, 0, canvas.width, canvas.height); }
       ctx.scale(scale, scale);
       ctx.drawImage(img, 0, 0);
-      const pngBlob = await new Promise(res => canvas.toBlob(res, "image/png"));
-      if (!pngBlob) throw new Error("PNG Blobを生成できませんでした");
-      downloadBlob(`kagami-map@${scale}x.png`, pngBlob);
-      notify(`PNGを保存しました (${scale}× / 背景: ${bgLabel(bg)})`);
+      const mime = format === "jpeg" ? "image/jpeg" : "image/png";
+      const imageBlob = await new Promise(res => canvas.toBlob(res, mime, format === "jpeg" ? 0.92 : undefined));
+      if (!imageBlob) throw new Error("画像Blobを生成できませんでした");
+      const label = format === "jpeg" ? "JPEG" : "PNG";
+      downloadBlob(`kagami-map@${scale}x.${format === "jpeg" ? "jpg" : "png"}`, imageBlob);
+      notify(`${label}を保存しました (${scale}× / 背景: ${bgLabel(bg)})`);
     } catch {
-      notify("PNGの生成に失敗しました");
+      notify("画像の生成に失敗しました");
     } finally {
       URL.revokeObjectURL(url);
     }
@@ -2082,7 +2109,7 @@ function App() {
 
   const onExportJson = () => {
     downloadBlob("kagami-map.json", new Blob([JSON.stringify(map, null, 2)], { type: "application/json" }));
-    notify("JSONを保存しました");
+    notify("JSONセーブファイルを保存しました");
   };
 
   const onAutoConnect = () => {
@@ -2094,13 +2121,21 @@ function App() {
     window.__kagamiFit?.();
   };
 
+  const themeStyle = {
+    "--bg": map.theme.background, "--panel": map.theme.panel, "--panel-2": map.theme.panelHi,
+    "--edge": map.theme.edge, "--ink": map.theme.ink, "--ink-dim": map.theme.inkDim,
+    "--brass": map.theme.brass, "--brass-hi": map.theme.brassHi,
+    "--blood": map.theme.blood, "--blood-hi": map.theme.bloodHi,
+    "--warn": map.theme.warn, "--line": map.theme.line,
+  };
+
   return (
-    <div className="app-root">
+    <div className="app-root" style={themeStyle}>
       <Toolbar
         map={map} mutate={mutate} replace={replace}
         undo={undo} redo={redo} canUndo={canUndo} canRedo={canRedo}
-        onExportSvg={() => setExportModal("svg")}
         onExportPng={() => setExportModal("png")}
+        onExportJpeg={() => setExportModal("jpeg")}
         onExportJson={onExportJson}
         onReset={() => { if (confirm("マップを初期状態に戻します。よろしいですか？")) mutate(d => mapOps.clear(d)); }}
         onFit={onFit}
@@ -2121,12 +2156,12 @@ function App() {
       <ExportDialog
         open={exportModal !== null}
         format={exportModal}
+        theme={map.theme}
         onClose={() => setExportModal(null)}
         onConfirm={(opts) => {
           const fmt = exportModal;
           setExportModal(null);
-          if (fmt === "svg") performExportSvg(opts);
-          else if (fmt === "png") performExportPng(opts);
+          if (fmt === "png" || fmt === "jpeg") performExportImage({ ...opts, format: fmt });
         }}
       />
       <HelpBar />
