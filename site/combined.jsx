@@ -769,11 +769,11 @@ const mapOps = {
     map.title = b.title;
   },
   /*
-   * 自動接続：Limbus 実際MAP の観察に基づいた法則で
-   * 隣接列間のエッジを再生成する。
-   *  - 各列の全ノードを row 順に整列
-   *  - 各ノード n(row=r) は "位置的に近い" 次列ノードに最大2本接続
-   *  - 全ての次列ノードは最低1本のインを持つ（孤島禁止）
+   * 自動接続：列型の鏡ダンジョン移動図に合わせ、隣接列だけを局所接続する。
+   *  - 1対複数／複数対1は完全に分岐・合流する。
+   *  - それ以外は、上下順を保つ双方向の最近傍接続のみを作る。
+   *  - 中央で距離が同じ場合だけ2本に分かれ、人数差のある列を自然に接続する。
+   *  - 全組合せ接続、列を飛び越す接続、X字の交差は作らない。
    */
   autoConnect(map) {
     map.edges = [];
@@ -785,27 +785,34 @@ const mapOps = {
     for (let s = 0; s < cols.length - 1; s++) {
       const cur = cols[s], nxt = cols[s + 1];
       if (!cur.length || !nxt.length) continue;
-      const norm = (arr) => arr.map((_, i) => arr.length > 1 ? i / (arr.length - 1) : 0.5);
-      const curPos = norm(cur), nxtPos = norm(nxt);
-      cur.forEach((n, i) => {
-        const dists = nxt.map((m, j) => ({ j, d: Math.abs(curPos[i] - nxtPos[j]) }));
-        dists.sort((a, b) => a.d - b.d);
-        const targets = dists.slice(0, Math.min(2, nxt.length));
-        targets.forEach(t => {
-          const m = nxt[t.j];
-          if (!map.edges.some(e => e.from === n.id && e.to === m.id)) {
-            map.edges.push({ from: n.id, to: m.id, style: "normal" });
-          }
-        });
-      });
-      // 孤島チェック
-      nxt.forEach((m, j) => {
-        if (!map.edges.some(e => e.to === m.id && cur.some(c => c.id === e.from))) {
-          const dists = cur.map((n, i) => ({ i, d: Math.abs(curPos[i] - nxtPos[j]) }));
-          dists.sort((a, b) => a.d - b.d);
-          const n = cur[dists[0].i];
-          map.edges.push({ from: n.id, to: m.id, style: "normal" });
+      const pos = (index, size) => size === 1 ? 0.5 : index / (size - 1);
+      const nearest = (position, nodes) => {
+        const distances = nodes.map((_, index) => Math.abs(position - pos(index, nodes.length)));
+        const minimum = Math.min(...distances);
+        return distances.flatMap((distance, index) => Math.abs(distance - minimum) < 1e-9 ? [index] : []);
+      };
+      const add = (fromIndex, toIndex) => {
+        const from = cur[fromIndex], to = nxt[toIndex];
+        if (!map.edges.some(edge => edge.from === from.id && edge.to === to.id)) {
+          map.edges.push({ from: from.id, to: to.id, style: "normal" });
         }
+      };
+
+      if (cur.length === 1) {
+        nxt.forEach((_, toIndex) => add(0, toIndex));
+        continue;
+      }
+      if (nxt.length === 1) {
+        cur.forEach((_, fromIndex) => add(fromIndex, 0));
+        continue;
+      }
+
+      // 出発側・到着側の両方から最近傍を採用し、全マスの出口・入口を保証する。
+      cur.forEach((_, fromIndex) => {
+        nearest(pos(fromIndex, cur.length), nxt).forEach(toIndex => add(fromIndex, toIndex));
+      });
+      nxt.forEach((_, toIndex) => {
+        nearest(pos(toIndex, nxt.length), cur).forEach(fromIndex => add(fromIndex, toIndex));
       });
     }
   },
@@ -1985,7 +1992,7 @@ function Toolbar({
                 onClick={() => mutate(d => mapOps.addColumn(d, (Math.max(0, ...d.nodes.map(n => n.stage))) + 1))}
                 title="末尾に列を追加（視点は動かしません）">列 ＋</button>
         <button className="tb-btn" onClick={onAutoConnect}
-                title="現在のノード配置から接続を自動生成（Limbus MAP法則ベース）">自動接続</button>
+                title="隣接列を局所分岐・合流で自動接続">自動接続</button>
         <button className="tb-btn" onClick={onFit} title="全体表示">全体</button>
       </div>
 
@@ -2210,7 +2217,7 @@ function App() {
 
   const onAutoConnect = () => {
     mutate(d => mapOps.autoConnect(d));
-    notify("接続を自動生成しました");
+    notify("局所分岐・合流で接続を自動生成しました");
   };
 
   const onFit = () => {
