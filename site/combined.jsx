@@ -1614,14 +1614,15 @@ function Inspector({ map, selectedId, mutate }) {
 
   const node = map.nodes.find(n => n.id === selectedId);
   if (!node) return (
-    <div className="fp inspector empty" style={{ right: pos.right, bottom: pos.bottom }}>
+    <div className="fp inspector empty" style={{ right: pos.right, bottom: pos.bottom, width: collapsed ? 44 : 300 }}>
       <div className="fp-head" style={{ cursor: "default" }}>
-        <span className="fp-title">プロパティ</span>
+        <span className="fp-title">{collapsed ? "" : "プロパティ"}</span>
+        <button className="fp-btn" type="button" onClick={(e) => { e.stopPropagation(); setCollapsed(v => !v); }} title={collapsed ? "展開" : "畳む"}>{collapsed ? "◀" : "▶"}</button>
       </div>
-      <div className="inspector-body empty">
-        <p>マップ上のマスを選択してください</p>
-        <p className="dim">・空白クリックで選択解除<br/>・<kbd>Space</kbd>+ドラッグでパン<br/>・<kbd>マウスホイール</kbd>で拡縮<br/>・選択ノードから点滅する◯を<b>クリック</b>で結線</p>
-      </div>
+      {!collapsed && <div className="inspector-body empty">
+          <p>マップ上のマスを選択してください</p>
+          <p className="dim">・空白クリックで選択解除<br/>・<kbd>Space</kbd>+ドラッグでパン<br/>・<kbd>マウスホイール</kbd>で拡縮<br/>・選択ノードから点滅する◯を<b>クリック</b>で結線</p>
+        </div>}
     </div>
   );
 
@@ -1633,7 +1634,7 @@ function Inspector({ map, selectedId, mutate }) {
     <div className="fp inspector" style={{ right: pos.right, bottom: pos.bottom, width: collapsed ? 44 : 300 }}>
       <div className="fp-head">
         <span className="fp-title">{collapsed ? "" : `#${node.stage + 1}-${node.row + 1} ${kindDef?.label ?? ""}`}</span>
-        <button className="fp-btn" onClick={() => setCollapsed(v => !v)} title={collapsed ? "展開" : "畳む"}>{collapsed ? "◀" : "▶"}</button>
+        <button className="fp-btn" type="button" onClick={(e) => { e.stopPropagation(); setCollapsed(v => !v); }} title={collapsed ? "展開" : "畳む"}>{collapsed ? "◀" : "▶"}</button>
       </div>
       {!collapsed && (
         <div className="inspector-body">
@@ -2148,4 +2149,3 @@ function HelpBar() {
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(<App />);
-
