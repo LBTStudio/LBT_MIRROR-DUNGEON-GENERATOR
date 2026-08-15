@@ -2001,7 +2001,7 @@ function App() {
 
   // SVGビルド（エクスポート用）
   const buildExportSvg = (opts = {}) => {
-    const { bg = "theme" } = opts;
+    const { bg = "theme", raster = false } = opts;
     const source = document.querySelector(".route-svg");
     if (!source) return null;
     const svg = source.cloneNode(true);
@@ -2014,6 +2014,17 @@ function App() {
     svg.querySelectorAll("g[class*='cand']").forEach(el => {});
     // 上記CSSクラスを持つグループは実際は key付き。安全のため animate要素を除去
     svg.querySelectorAll("animate, animateTransform").forEach(el => el.remove());
+    // foreignObjectはCanvasへ描画すると出力用Canvasを汚染するため、PNG化時だけ内側のSVGへ置換する。
+    if (raster) {
+      svg.querySelectorAll("foreignObject").forEach(fo => {
+        const sourceIcon = fo.querySelector("svg");
+        if (!sourceIcon) { fo.remove(); return; }
+        const icon = sourceIcon.cloneNode(true);
+        ["x", "y", "width", "height"].forEach(name => icon.setAttribute(name, fo.getAttribute(name) ?? "0"));
+        icon.setAttribute("overflow", "visible");
+        fo.replaceWith(icon);
+      });
+    }
     // 背景処理
     const bgRect = svg.querySelector("rect[data-role='canvas-bg']");
     if (bgRect) {
@@ -2040,7 +2051,7 @@ function App() {
   };
 
   const performExportPng = async ({ bg, scale }) => {
-    const svgText = buildExportSvg({ bg });
+    const svgText = buildExportSvg({ bg, raster: true });
     if (!svgText) { notify("SVGの生成に失敗しました"); return; }
     const layout = computeLayout(map);
     const img = new Image();
@@ -2056,11 +2067,12 @@ function App() {
       if (bg === "white") { ctx.fillStyle = "#f8f6ef"; ctx.fillRect(0, 0, canvas.width, canvas.height); }
       ctx.scale(scale, scale);
       ctx.drawImage(img, 0, 0);
-      await new Promise(res => canvas.toBlob(b => {
-        if (b) downloadBlob(`kagami-map@${scale}x.png`, b);
-        res();
-      }, "image/png"));
+      const pngBlob = await new Promise(res => canvas.toBlob(res, "image/png"));
+      if (!pngBlob) throw new Error("PNG Blobを生成できませんでした");
+      downloadBlob(`kagami-map@${scale}x.png`, pngBlob);
       notify(`PNGを保存しました (${scale}× / 背景: ${bgLabel(bg)})`);
+    } catch {
+      notify("PNGの生成に失敗しました");
     } finally {
       URL.revokeObjectURL(url);
     }
