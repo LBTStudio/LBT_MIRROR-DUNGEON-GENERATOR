@@ -1,14 +1,4 @@
-/* ===== icons.jsx ===== */
-/*
- * 鏡ダンジョン MAP アイコン一式（v2 / Wikiシルエット尊重版）
- * ---
- * 方針：
- *  - 未経験ユーザーが「見て何のマスか分かる」ことを最優先
- *  - Wikiで公開されている公式ゲームMAPアイコンの輪郭を尊重（剣・兜・八角+WARNING・三角+目・？・スロット・！）
- *  - 装飾は控えめに、モノクロ (ink) + アクセント1色で明快に
- *  - 通常戦闘は剣モチーフ（不変）
- * すべて viewBox="0 0 100 100"、単色トーンで統一
- */
+
 
 const IconDefs = ({ id = "iconglow" }) => (
   <defs>
@@ -22,80 +12,45 @@ const IconDefs = ({ id = "iconglow" }) => (
   </defs>
 );
 
-/* ────────────────────────────────
-   1. Origin — 開始点  (Wiki準拠: 逆台形の重厚ゲート + 中央円 + 上部の梁)
-   本家アイコン: 逆台形（上底が広く下底が狭い or その反対）＋内側に大きな輪郭円＋
-   上下の梁が円をわずかに切る構造。二重フチで金属プレート感を出す。
-   ──────────────────────────────── */
 const IconOrigin = ({ ink = "#eae3d5" }) => (
   <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
     <IconDefs id="ori" />
     <g filter="url(#ori-shadow)" strokeLinejoin="round" strokeLinecap="round" fill="none">
-      {/* 外枠: 逆台形 (上辺長め・下辺短め) — Wiki本家の形状 */}
+      
       <path d="M 8 26 H 92 L 82 78 H 18 Z" stroke={ink} strokeWidth="7" />
       <path d="M 8 26 H 92 L 82 78 H 18 Z" stroke={ink} strokeWidth="2.5" />
-      {/* 中央の大きな円 — 二重フチで存在感 */}
+      
       <circle cx="50" cy="52" r="18" stroke={ink} strokeWidth="5" />
-      {/* 上の梁 (円の上部をわずかに横切る) */}
+      
       <path d="M 22 40 H 78" stroke={ink} strokeWidth="5.5" />
-      {/* 下の梁 (円の下部をわずかに横切る) */}
+      
       <path d="M 24 64 H 76" stroke={ink} strokeWidth="5.5" />
     </g>
   </svg>
 );
 
-/* ────────────────────────────────
-   2. Skirmish — 一般戦闘 (Wiki準拠: 西洋長剣 + 右上の四芒スパーク)
-   本家アイコン: 左下→右上へ斜めに配置された西洋剣。
-   ─ 幅広の直刀 (先端がクリッピングポイント式で片斜めに切り落とし)
-   ─ 太い水平のクロスガード (両端が膨らむ)、刀身に垂直に交差
-   ─ 短い柄 + 丸いポメル
-   ─ 右上に太く縁取られた四芒スパーク
-   ─ 刀身の稜線を細い暗線でハイライト
-   幅広ソリッドな西洋剣の重量感を最優先。
-   ──────────────────────────────── */
 const IconSkirmish = ({ ink = "#eae3d5" }) => (
   <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
     <IconDefs id="sk" />
     <g filter="url(#sk-shadow)">
-      {/* ─── 右上の四芒スパーク (Wikiの光) ───
-          凹型の菱形。太いアウトライン付きで独立オブジェクトとして際立つ。*/}
+      
       <g transform="translate(76 22)">
-        {/* 外側のフチ (黒縁で剣本体から分離) */}
+        
         <path d="M 0 -18 L 5 -5 L 18 0 L 5 5 L 0 18 L -5 5 L -18 0 L -5 -5 Z"
               fill={ink} stroke="#0b0a0d" strokeWidth="3" strokeLinejoin="miter" />
       </g>
 
-      {/* ─── 西洋剣本体 (左下→右上の斜め配置) ───
-          剣の向き: 柄が左下 (68,84)、切っ先が右上 (18,32) を目指す
-          剣軸ベクトル ≒ (-50, -52) → 角度 ≒ -134°
-          剣の"上"方向 (刀身の幅方向) は軸に直交、剣軸に対して +90°回転 = (52,-50)を正規化 */}
+      
 
-      {/* 刀身: 幅広の平剣。クリッピングポイント式の先端。
-          柄側 A(64,80), B(72,72) を基点に、切っ先方向に平行四辺形状に伸びる。
-          切っ先は片側だけ斜め切り落とし (西洋剣ならではの菱形先端)。
-          頂点 (時計回り):
-            P1 = (60, 80)  柄側 左下
-            P2 = (68, 72)  柄側 右上
-            P3 = (32, 36)  刀身終端 右上 (切っ先の斜面へ向かうポイント)
-            P4 = (18, 32)  切っ先 (斜めに落ちる頂点)
-            P5 = (24, 44)  切っ先斜面のショルダー
-      */}
+      
       <path d="M 60 80 L 68 72 L 32 36 L 20 30 L 24 44 Z"
             fill={ink} stroke="#0b0a0d" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
-      {/* 刀身の中央稜線 (フラー) — 内部の細い暗線でハイライト */}
+      
       <path d="M 60 76 L 30 44" fill="none" stroke="#0b0a0d" strokeWidth="1.8" strokeOpacity="0.5" strokeLinecap="round" />
 
-      {/* クロスガード (鍔) — 刀身に直交する水平バー。両端が膨らんで凸型。
-          刀身軸 (-50,-52) に直交する方向 (52,-50)を正規化 → (0.72, -0.69)
-          柄側の合流点 C = (64, 76) 付近
-          バーは C から両側へ長さ 22 ずつ伸びる。
-          左端 = C + (-0.72, 0.69)*22 = (48.2, 91.2)
-          右端 = C + (0.72, -0.69)*22 = (79.8, 60.8)
-          幅は軸方向に ±6 で厚み表現。
-      */}
+      
       <g fill={ink} stroke="#0b0a0d" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round">
-        {/* 鍔本体 (両端がやや膨らむ細長い平行四辺形) */}
+        
         <path d="
           M 46 90
           L 50 94
@@ -108,15 +63,11 @@ const IconSkirmish = ({ ink = "#eae3d5" }) => (
           Z" />
       </g>
 
-      {/* 柄 (グリップ) — クロスガードの内側から柄頭へ伸びる短い棒。
-          方向は刀身軸の反対 (50,52)/normalize = (0.69, 0.72)
-          クロスガード中点 C=(64,76) から 14 だけ柄側へ = (73.7, 86.1)
-          少し細めのバーで縦グリップ感 */}
+      
       <path d="M 62 78 L 78 94 L 82 90 L 66 74 Z"
             fill={ink} stroke="#0b0a0d" strokeWidth="3" strokeLinejoin="round" />
 
-      {/* ポメル (柄頭) — 柄の先端に丸い球
-          位置 = 柄の終端付近 (80, 92) */}
+      
       <circle cx="82" cy="93" r="6.5"
               fill={ink} stroke="#0b0a0d" strokeWidth="3" />
       <circle cx="82" cy="93" r="2.4"
@@ -125,15 +76,11 @@ const IconSkirmish = ({ ink = "#eae3d5" }) => (
   </svg>
 );
 
-/* ────────────────────────────────
-   3. Focused — 集中戦闘  (角付き兜)
-   Wiki: 角二本 + 二つ目 + 顎  → シンプル明快に
-   ──────────────────────────────── */
 const IconFocused = ({ ink = "#eae3d5", accent = "#d4a24b" }) => (
   <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
     <IconDefs id="fo" />
     <g filter="url(#fo-shadow)">
-      {/* 兜シルエット（角2本 + 頬面 + 顎） Wikiの輪郭を忠実に */}
+      
       <path
         d="
           M 26 14 L 34 32
@@ -150,35 +97,31 @@ const IconFocused = ({ ink = "#eae3d5", accent = "#d4a24b" }) => (
         "
         fill="none" stroke={ink} strokeWidth="3" strokeLinejoin="round"
       />
-      {/* 二つ目（Wiki同じ丸目） */}
+      
       <circle cx="41" cy="54" r="4" fill={ink} />
       <circle cx="59" cy="54" r="4" fill={ink} />
-      {/* 顎の水平線（Wikiの下部ライン） */}
+      
       <path d="M 42 78 H 58" stroke={ink} strokeWidth="3" strokeLinecap="round" />
     </g>
   </svg>
 );
 
-/* ────────────────────────────────
-   4. Elite — 精鋭戦闘  (六角プレート + WARNING帯)
-   Wiki: 六角の枠 + 周囲に!WARNING!テープ
-   ──────────────────────────────── */
 const IconElite = ({ ink = "#eae3d5", accent = "#c8443c", warn = "#f0d24b", variant = "full" }) => {
-  // Wiki準拠: 八角形の枠のみ + 周囲に!WARNING!テープを4本斜めに巻きつけ
-  // 正八角形頂点 (中心 50,50, 半径 32)
+  
+  
   const R = 32, CX = 50, CY = 50;
   const pts = Array.from({ length: 8 }, (_, i) => {
-    const ang = (Math.PI / 4) * i - Math.PI / 8; // 頂点が水平/垂直に来るよう -22.5°オフセット
+    const ang = (Math.PI / 4) * i - Math.PI / 8; 
     return [CX + R * Math.cos(ang), CY + R * Math.sin(ang)];
   });
   const octPath = "M " + pts.map(([x, y]) => `${x.toFixed(2)} ${y.toFixed(2)}`).join(" L ") + " Z";
-  // !WARNING! テープ (Wikiと同じく複数の方向に斜め)
+  
   const tapeAngles = variant === "quiet" ? [] : [-60, -25, 30, 65];
   return (
     <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
       <IconDefs id="el" />
       <g filter="url(#el-shadow)">
-        {/* 背後の!WARNING!テープ (Wiki準拠) */}
+        
         {tapeAngles.map((deg, i) => {
           const y = 16 + i * 20;
           return (
@@ -192,12 +135,12 @@ const IconElite = ({ ink = "#eae3d5", accent = "#c8443c", warn = "#f0d24b", vari
             </g>
           );
         })}
-        {/* 中央の八角プレート — 塗り黒＋白フチのみ（内部装飾は排除して洗練） */}
+        
         <path d={octPath}
               fill="#0b0a0d" stroke={ink} strokeWidth="7" strokeLinejoin="miter" />
         <path d={octPath}
               fill="none" stroke={ink} strokeWidth="2.5" strokeLinejoin="miter" />
-        {/* 内側に「E」（Elite）のミニマル刻印 — Wikiではプレーンだが識別性のためaccentで小さく */}
+        
         <g transform={`translate(${CX} ${CY})`}>
           <path d="M -9 -11 H 9 M -9 0 H 6 M -9 11 H 9"
                 stroke={accent} strokeWidth="3.5" strokeLinecap="round" fill="none" />
@@ -207,39 +150,32 @@ const IconElite = ({ ink = "#eae3d5", accent = "#c8443c", warn = "#f0d24b", vari
   );
 };
 
-/* ────────────────────────────────
-   5. Abnormality — 幻想体戦闘 (三角+目+小三角)
-   Wiki: 大三角内に「二つ目 + 上の小三角 + 下部の二つ小三角」
-   ──────────────────────────────── */
 const IconAbnormality = ({ ink = "#eae3d5", accent = "#c8443c" }) => (
   <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
     <IconDefs id="ab" />
     <g filter="url(#ab-shadow)">
-      {/* 大三角シルエット（Wiki準拠 : 頂角がやや尖った） */}
+      
       <path d="M 50 10 L 88 86 H 12 Z"
             fill="none" stroke={ink} strokeWidth="7" strokeLinejoin="round" strokeLinecap="round" />
       <path d="M 50 10 L 88 86 H 12 Z"
             fill="none" stroke={ink} strokeWidth="3" strokeLinejoin="round" />
-      {/* 上部の小三角（Wikiの角） */}
+      
       <path d="M 50 20 L 56 30 L 44 30 Z" fill={ink} />
-      {/* 二つ目（Wiki同じ配置） */}
+      
       <circle cx="42" cy="50" r="4" fill={ink} />
       <circle cx="58" cy="50" r="4" fill={ink} />
-      {/* 下部の二つ小三角（Wikiの下部特徴） */}
+      
       <path d="M 30 82 L 36 68 L 42 82 Z" fill="none" stroke={ink} strokeWidth="3.5" strokeLinejoin="round" />
       <path d="M 58 82 L 64 68 L 70 82 Z" fill="none" stroke={ink} strokeWidth="3.5" strokeLinejoin="round" />
     </g>
   </svg>
 );
 
-/* ────────────────────────────────
-   6. Guardian — 強敵 (剣付き炎の輪)  ※既存アセットから継承しつつ調整
-   ──────────────────────────────── */
 const IconGuardian = ({ ink = "#eae3d5", accent = "#c8443c" }) => (
   <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
     <IconDefs id="gu" />
     <g filter="url(#gu-shadow)">
-      {/* 炎の環 */}
+      
       <path
         d="M 50 12 C 68 22 82 34 84 50 C 82 68 68 78 60 82
            C 66 70 62 60 54 56
@@ -250,7 +186,7 @@ const IconGuardian = ({ ink = "#eae3d5", accent = "#c8443c" }) => (
            C 18 34 32 22 50 12 Z"
         fill={accent} stroke={ink} strokeWidth="3" strokeLinejoin="round"
       />
-      {/* 中央: 剣 */}
+      
       <g stroke={ink} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="#0b0a0d">
         <path d="M 50 26 L 54 30 V 66 L 50 74 L 46 66 V 30 Z" />
         <path d="M 38 38 H 62" strokeWidth="4" />
@@ -260,59 +196,46 @@ const IconGuardian = ({ ink = "#eae3d5", accent = "#c8443c" }) => (
   </svg>
 );
 
-/* ────────────────────────────────
-   7. Event — イベント (?マーク、大きく明快)
-   Wiki: 単純に大きな?、下に四角の点
-   ──────────────────────────────── */
 const IconEvent = ({ ink = "#eae3d5", accent = "#d4a24b" }) => (
   <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
     <IconDefs id="ev" />
     <g filter="url(#ev-shadow)">
-      {/* ?本体（極太、Wikiの様に大きく） */}
+      
       <path
         d="M 32 34
            C 32 20 44 12 54 14
            C 68 18 72 34 62 44
            L 52 54 V 66"
         fill="none" stroke={ink} strokeWidth="11" strokeLinecap="round" strokeLinejoin="round" />
-      {/* ?の下ドット */}
+      
       <rect x="45" y="76" width="14" height="14" rx="2" fill={ink} />
     </g>
   </svg>
 );
 
-/* ────────────────────────────────
-   8. Supply — ショップ (コンビニ意匠 × Limbus モノクロ工業美学)
-   構造: 平屋の店舗ボックス + 上部に横長の看板 + 中央に自動ドア + 両サイドにガラスウィンドウ
-   色: Limbus MAP UI に沿った完全モノクロ (白 ink + 濃灰 + 黒フィル)
-   ─ 看板は縦3ストライプ (明・暗・明) で「コンビニ看板」の記号性を残す
-   ─ 看板中央にサーカムフレックス (^) 型のロゴマーク (山形3ポイント=コンビニ的アクセント)
-   ─ 自動ドアは中央の縦仕切り + 上下のガラス反射線
-   ─ 両サイドウィンドウは十字グリッドのガラス格子で工業的な質感
-   ──────────────────────────────── */
 const IconSupply = ({ ink = "#eae3d5", dark = "#0b0a0d", midGray = "#3a333a" }) => {
   return (
     <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
       <IconDefs id="sp" />
       <g filter="url(#sp-shadow)">
-        {/* ─── 店舗本体 (下部) — 白フィル + 太黒フチ ─── */}
+        
         <rect x="12" y="42" width="76" height="46" rx="1"
               fill={ink} stroke={dark} strokeWidth="3" />
-        {/* 床タイル (基礎の影) */}
+        
         <rect x="12" y="82" width="76" height="6" fill={dark} opacity="0.85" />
         <path d="M 22 85 H 78" stroke={ink} strokeWidth="0.6" opacity="0.4" />
 
-        {/* ─── 左のショーウィンドウ ─── */}
+        
         <rect x="16" y="52" width="20" height="26" fill={dark} stroke={dark} strokeWidth="1.5" />
-        {/* ガラスの十字グリッド */}
+        
         <g stroke={ink} strokeWidth="1.2" opacity="0.55">
           <path d="M 16 65 H 36" />
           <path d="M 26 52 V 78" />
         </g>
-        {/* ガラスの反射 (斜めのハイライト) */}
+        
         <path d="M 18 54 L 22 54 L 34 66 L 34 70 Z" fill={ink} opacity="0.12" />
 
-        {/* ─── 右のショーウィンドウ ─── */}
+        
         <rect x="64" y="52" width="20" height="26" fill={dark} stroke={dark} strokeWidth="1.5" />
         <g stroke={ink} strokeWidth="1.2" opacity="0.55">
           <path d="M 64 65 H 84" />
@@ -320,54 +243,50 @@ const IconSupply = ({ ink = "#eae3d5", dark = "#0b0a0d", midGray = "#3a333a" }) 
         </g>
         <path d="M 66 54 L 70 54 L 82 66 L 82 70 Z" fill={ink} opacity="0.12" />
 
-        {/* ─── 中央の自動ドア (両開き) ─── */}
+        
         <rect x="40" y="52" width="20" height="30" fill={dark} stroke={dark} strokeWidth="1.5" />
-        {/* ドア中央の縦仕切り (両開きの継ぎ目) */}
+        
         <path d="M 50 52 V 82" stroke={ink} strokeWidth="1.6" />
-        {/* ドアの横フレーム (上部の窓枠) */}
+        
         <path d="M 40 60 H 60" stroke={ink} strokeWidth="1" opacity="0.5" />
-        {/* ドアの取っ手 (両側) */}
+        
         <rect x="45" y="66" width="1.6" height="6" fill={ink} />
         <rect x="53.4" y="66" width="1.6" height="6" fill={ink} />
 
-        {/* ─── 看板 (上部) — 縦3ストライプ (Limbus的にモノクロ濃淡で表現) ─── */}
-        {/* 看板背板 */}
+        
+        
         <rect x="8" y="20" width="84" height="22" rx="1"
               fill={ink} stroke={dark} strokeWidth="3" />
-        {/* 3ストライプ (明白 → 濃灰 → 明白) */}
+        
         <rect x="10" y="22" width="80" height="6" fill={ink} />
         <rect x="10" y="28" width="80" height="6" fill={midGray} />
         <rect x="10" y="34" width="80" height="6" fill={ink} />
-        {/* ストライプ間の細い黒仕切り */}
+        
         <path d="M 10 28 H 90 M 10 34 H 90" stroke={dark} strokeWidth="0.6" opacity="0.55" />
 
-        {/* 看板中央のロゴマーク — コンビニ的な山形サーカムフレックス */}
+        
         <g transform="translate(50 31)">
-          {/* 円形バッジ */}
+          
           <circle r="8.5" fill={ink} stroke={dark} strokeWidth="1.6" />
-          {/* 山形の3ポイント (∧∧∧) — コンビニロゴの視覚的サイン */}
+          
           <path d="M -5.5 2.5 L -3 -2 L 0 2.5 L 3 -2 L 5.5 2.5"
                 fill="none" stroke={dark} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          {/* 下部の小さな三角ドット */}
+          
           <path d="M -1.5 5 L 0 6.5 L 1.5 5 Z" fill={dark} />
         </g>
 
-        {/* 看板の下辺と店舗上辺の間の細い暗いスロット (視覚的な分離) */}
+        
         <path d="M 12 42 H 88" stroke={dark} strokeWidth="1.5" opacity="0.6" />
       </g>
     </svg>
   );
 };
 
-/* ────────────────────────────────
-   9. Boss — ボス (三角+! + WARNING帯)
-   Wiki: △の中に「！」+ 背後に警告テープ
-   ──────────────────────────────── */
 const IconBoss = ({ ink = "#eae3d5", accent = "#c8443c", warn = "#f0d24b", variant = "full" }) => (
   <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
     <IconDefs id="bs" />
     <g filter="url(#bs-shadow)">
-      {/* 背後の警告テープ (Wikiと同じく斜めに複数) — variant=quiet では省略 */}
+      
       {variant !== "quiet" && (
         <g>
           <g transform="rotate(-38 50 50)">
@@ -384,20 +303,18 @@ const IconBoss = ({ ink = "#eae3d5", accent = "#c8443c", warn = "#f0d24b", varia
           </g>
         </g>
       )}
-      {/* 三角形（Wikiの角丸三角） */}
+      
       <path d="M 50 10 Q 52 10 54 14 L 86 76 Q 88 82 82 84 H 18 Q 12 82 14 76 L 46 14 Q 48 10 50 10 Z"
             fill="#0b0a0d" stroke={ink} strokeWidth="7" strokeLinejoin="round" />
       <path d="M 50 10 Q 52 10 54 14 L 86 76 Q 88 82 82 84 H 18 Q 12 82 14 76 L 46 14 Q 48 10 50 10 Z"
             fill="none" stroke={ink} strokeWidth="3" strokeLinejoin="round" />
-      {/* ! マーク */}
+      
       <path d="M 50 32 V 62" stroke={ink} strokeWidth="10" strokeLinecap="round" />
       <circle cx="50" cy="74" r="5.5" fill={ink} />
     </g>
   </svg>
 );
 
-// kind → コンポーネント (guardian は廃止 — 既存JSONでguardianを持つノードは
-// normalizeMap 側で skirmish に置換される)
 const IconMap = {
   origin: IconOrigin,
   skirmish: IconSkirmish,
@@ -414,9 +331,6 @@ Object.assign(window, {
   IconGuardian, IconEvent, IconSupply, IconBoss, IconMap, IconDefs,
 });
 
-
-/* ===== kinds.jsx ===== */
-/* マス種別の定義（Wiki準拠、guardian廃止、命名を「開始点」「一般戦闘」に整理） */
 const KINDS = [
   { id: "origin",      label: "開始点",     short: "始", desc: "各階層の開始地点",           tone: "ink"   },
   { id: "skirmish",    label: "一般戦闘",   short: "戦", desc: "一般的な戦闘マス",           tone: "ink"   },
@@ -430,25 +344,23 @@ const KINDS = [
 
 const KIND_INDEX = Object.fromEntries(KINDS.map(k => [k.id, k]));
 
-// テーマトークン (Danteダーク基調)
 const THEME = {
-  bg:      "#0b0a0d",   // 深黒 (キャンバス背景)
-  panel:   "#161318",   // パネル・時計盤
+  bg:      "#0b0a0d",   
+  panel:   "#161318",   
   panelHi: "#1e1a20",
   edge:    "#2c262e",
-  ink:     "#eae3d5",   // 骨白
+  ink:     "#eae3d5",   
   inkDim:  "#8a8375",
-  brass:   "#d4a24b",   // 真鍮
-  blood:   "#c8443c",   // 血赤
+  brass:   "#d4a24b",   
+  blood:   "#c8443c",   
   bloodHi: "#e35b53",
-  warn:    "#f0d24b",   // 警告黄
-  line:    "#7a5a48",   // 経路線ベース
-  lineHi:  "#d4a24b",   // 経路線ハイライト
+  warn:    "#f0d24b",   
+  line:    "#7a5a48",   
+  lineHi:  "#d4a24b",   
   goldGlow:"rgba(212,162,75,.55)",
   bloodGlow:"rgba(200,68,60,.5)",
 };
 
-// 配色プレビューではSVG属性を再生成せず、app-rootのCSS変数だけを更新する。
 const CSS_THEME = Object.freeze({
   background: "var(--map-bg)", panel: "var(--map-panel)", panelHi: "var(--map-panel-2)", edge: "var(--map-edge)",
   ink: "var(--map-ink)", inkDim: "var(--map-ink-dim)", brass: "var(--map-brass)", brassHi: "var(--map-brass-hi)",
@@ -471,19 +383,14 @@ function themeToCssVars(theme) {
   };
 }
 
-// 接続線スタイル
 const EDGE_STYLES = {
   normal:  { label: "通常",   dash: "none",     width: 2.8, opacity: 0.85 },
   branch:  { label: "分岐",   dash: "6 5",      width: 2.4, opacity: 0.9  },
-  forced:  { label: "強制",   dash: "none",     width: 4.2, opacity: 1.0  }, // 二重線
+  forced:  { label: "強制",   dash: "none",     width: 4.2, opacity: 1.0  }, 
   hidden:  { label: "隠し",   dash: "1 4",      width: 2.2, opacity: 0.65 },
 };
 
 Object.assign(window, { KINDS, KIND_INDEX, THEME, EDGE_STYLES });
-
-
-/* ===== store.jsx ===== */
-/* 状態管理: reducer + localStorage、履歴（undo/redo） */
 
 const STORAGE_KEY = "kagami-map-studio.v3";
 const HISTORY_LIMIT = 60;
@@ -496,57 +403,49 @@ function uuid() {
 
 function clone(v) { return JSON.parse(JSON.stringify(v)); }
 
-// 初期マップ (Limbus Company 鏡ダンジョン 標準1階層を模したケース)
-// - STAGE 1: 起点 (1)
-// - STAGE 2: 通常 / 通常 / イベント  ← 1列3ノード
-// - STAGE 3: 集中 / ショップ         (2)
-// - STAGE 4: 通常 / 精鋭 / 幻想体     ← 1列3ノード
-// - STAGE 5: 集中 / ショップ         (2)
-// - STAGE 6: ボス (1)
-// 接続線は既定で "normal" (実線)、ボス直前のみ "forced"
 function baseMap() {
   const origin      = { id: uuid(), stage: 0, row: 0, kind: "origin",     label: "開始点" };
-  // STAGE 2 (3ノード)
+  
   const s2a         = { id: uuid(), stage: 1, row: 0, kind: "skirmish",   label: "一般戦闘" };
   const s2b         = { id: uuid(), stage: 1, row: 1, kind: "skirmish",   label: "一般戦闘" };
   const s2c         = { id: uuid(), stage: 1, row: 2, kind: "event",      label: "イベント" };
-  // STAGE 3 (2ノード)
+  
   const s3a         = { id: uuid(), stage: 2, row: 0, kind: "focused",    label: "集中戦闘" };
   const s3b         = { id: uuid(), stage: 2, row: 1, kind: "supply",     label: "ショップ" };
-  // STAGE 4 (3ノード)
+  
   const s4a         = { id: uuid(), stage: 3, row: 0, kind: "skirmish",   label: "一般戦闘" };
   const s4b         = { id: uuid(), stage: 3, row: 1, kind: "elite",      label: "精鋭戦闘" };
   const s4c         = { id: uuid(), stage: 3, row: 2, kind: "abnormality",label: "幻想体戦闘" };
-  // STAGE 5 (2ノード)
+  
   const s5a         = { id: uuid(), stage: 4, row: 0, kind: "focused",    label: "集中戦闘" };
   const s5b         = { id: uuid(), stage: 4, row: 1, kind: "supply",     label: "ショップ" };
-  // STAGE 6 (1ノード, boss)
+  
   const bossA       = { id: uuid(), stage: 5, row: 0, kind: "boss",       label: "ボス戦闘" };
 
   const nodes = [origin, s2a, s2b, s2c, s3a, s3b, s4a, s4b, s4c, s5a, s5b, bossA];
-  // 全て 'normal' (通常実線) を基本、ボス直前だけ forced
+  
   const B = "normal";
   const edges = [
-    // STAGE1 → 2
+    
     { from: origin.id, to: s2a.id, style: B },
     { from: origin.id, to: s2b.id, style: B },
     { from: origin.id, to: s2c.id, style: B },
-    // STAGE2 → 3
+    
     { from: s2a.id,   to: s3a.id, style: B },
     { from: s2b.id,   to: s3a.id, style: B },
     { from: s2b.id,   to: s3b.id, style: B },
     { from: s2c.id,   to: s3b.id, style: B },
-    // STAGE3 → 4
+    
     { from: s3a.id,   to: s4a.id, style: B },
     { from: s3a.id,   to: s4b.id, style: B },
     { from: s3b.id,   to: s4b.id, style: B },
     { from: s3b.id,   to: s4c.id, style: B },
-    // STAGE4 → 5
+    
     { from: s4a.id,   to: s5a.id, style: B },
     { from: s4b.id,   to: s5a.id, style: B },
     { from: s4b.id,   to: s5b.id, style: B },
     { from: s4c.id,   to: s5b.id, style: B },
-    // STAGE5 → 6 (ボスは強制ルート)
+    
     { from: s5a.id,   to: bossA.id, style: "forced" },
     { from: s5b.id,   to: bossA.id, style: "forced" },
   ];
@@ -577,10 +476,10 @@ function baseMap() {
 function normalizeMap(input) {
   if (!input || typeof input !== "object") return baseMap();
   const base = baseMap();
-  // 旧ラベルを新ラベルにマイグレーション (起点→開始点、通常戦闘→一般戦闘)
+  
   const LABEL_MIGRATE = { "起点": "開始点", "通常戦闘": "一般戦闘", "強敵": "一般戦闘" };
   const nodes = Array.isArray(input.nodes) ? input.nodes.map((n, i) => {
-    // guardian → skirmish、その他不明種別 → skirmish
+    
     const kind = KIND_INDEX[n.kind] ? n.kind : "skirmish";
     const rawLabel = String(n.label ?? KIND_INDEX[kind]?.label ?? "").slice(0, 24);
     const label = LABEL_MIGRATE[rawLabel] ?? rawLabel;
@@ -632,7 +531,6 @@ function saveMap(map) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(map)); } catch {}
 }
 
-// 高階数：履歴付きState
 function useMapHistory() {
   const [state, setState] = React.useState(() => ({
     past: [],
@@ -667,7 +565,7 @@ function useMapHistory() {
     });
   }, []);
 
-  // 色変更はノード・接続を複製せず、連続プレビューの確定時に一つの履歴だけを記録する。
+  
   const replaceTheme = React.useCallback((theme) => {
     setState(prev => {
       const nextTheme = { ...prev.present.theme, ...theme };
@@ -712,7 +610,6 @@ function useMapHistory() {
   };
 }
 
-// マップ操作ユーティリティ
 const mapOps = {
   addNode(map, stage, row, kind = "skirmish") {
     const id = uuid();
@@ -724,9 +621,9 @@ const mapOps = {
     map.edges = map.edges.filter(e => e.from !== id && e.to !== id);
   },
   addColumn(map, atStage) {
-    // atStageの列を挿入。既存stage >= atStage はシフト。
+    
     map.nodes.forEach(n => { if (n.stage >= atStage) n.stage += 1; });
-    // 新規の列に1つノードを配置
+    
     const id = uuid();
     map.nodes.push({ id, stage: atStage, row: 0, kind: "skirmish", label: KIND_INDEX.skirmish.label });
     return id;
@@ -769,14 +666,8 @@ const mapOps = {
     map.title = b.title;
     map.theme = b.theme;
   },
-  /*
-   * 鏡式自動接続：公開マップに見られる扇状分岐・持続レーン・菱形再合流を組み立てる。
-   *  - 隣接列だけを結び、各マスの入口・出口を必ず確保する。
-   *  - 人数が増減する列では、同距離の上下レーンを両方採用して局所的に枝を開閉する。
-   *  - 人数が同じでも、直前または直後が分岐・合流なら1本だけ隣接レーンへ斜行させる。
-   *    これにより分岐直後の選択肢を持続させ、菱形の再合流を作る。
-   *  - 全組合せ接続、二列以上の飛び越し、順序逆転によるX字交差は作らない。
-   */
+  
+
   autoConnect(map) {
     map.edges = [];
     const cols = [];
@@ -800,19 +691,19 @@ const mapOps = {
         }
       };
 
-      // 単一レーンからは、上・中・下の選択肢を扇状にすべて開く。
+      
       if (cur.length === 1) {
         nxt.forEach((_, toIndex) => add(0, toIndex));
         continue;
       }
-      // 終端側の単一レーンへは、開いている枝をすべて収束させる。
+      
       if (nxt.length === 1) {
         cur.forEach((_, fromIndex) => add(fromIndex, 0));
         continue;
       }
 
-      // 出発側・到着側の両方から最近傍を採用する。等距離の中間レーンは両方へ結び、
-      // 2→3 / 3→2 の扇状分岐・菱形再合流を自然に作る。
+      
+      
       cur.forEach((_, fromIndex) => {
         nearest(pos(fromIndex, cur.length), nxt).forEach(toIndex => add(fromIndex, toIndex));
       });
@@ -820,8 +711,8 @@ const mapOps = {
         nearest(pos(toIndex, nxt.length), cur).forEach(fromIndex => add(fromIndex, toIndex));
       });
 
-      // 分岐または合流の隣にある同数列では、1本だけ隣接レーンへ斜行させる。
-      // 直通だけの平行線にせず、選択経路を最低1列ぶん維持する菱形を作る。
+      
+      
       const previousCount = s > 0 ? cols[s - 1].length : cur.length;
       const followingCount = s + 2 < cols.length ? cols[s + 2].length : nxt.length;
       const hasBranchContext = previousCount !== cur.length || followingCount !== nxt.length;
@@ -834,7 +725,7 @@ const mapOps = {
       }
     }
   },
-  /* 接続候補: 隣接列のノードで、まだ接続していないもの */
+  
   candidates(map, fromId) {
     const from = map.nodes.find(n => n.id === fromId);
     if (!from) return [];
@@ -845,12 +736,6 @@ const mapOps = {
 };
 
 Object.assign(window, { useMapHistory, mapOps, baseMap, normalizeMap, uuid, MAX_COLUMNS, MAX_NODES_PER_COLUMN });
-
-
-/* ===== radial-menu.jsx ===== */
-/* RadialKindMenu — pie/wheel menu for changing a waypoint's kind directly on
-   the map. Opens around the clicked node, closes on outside-click / ESC.
-   The centre hub doubles as a "無効化" (deactivate slot) action. */
 
 function RadialKindMenu({ open, cx, cy, currentKind, kinds, onPick, onClose, kindColors, onDeactivate }) {
   const menuRef = React.useRef(null);
@@ -872,7 +757,7 @@ function RadialKindMenu({ open, cx, cy, currentKind, kinds, onPick, onClose, kin
 
   if (!open) return null;
 
-  // entrance is fixed at the start-slot, so it never appears in the picker
+  
   const entries = Object.entries(kinds).filter(([k]) => k !== "entrance");
   const N = entries.length;
   const R = 108;
@@ -937,7 +822,7 @@ function RadialKindMenu({ open, cx, cy, currentKind, kinds, onPick, onClose, kin
         );
       })}
 
-      {/* central hub — deactivate/close */}
+      
       <div className="radial-hub-group">
         <button className="radial-hub" onClick={onClose} aria-label="閉じる">
           <svg viewBox="-24 -24 48 48" width="52" height="52" aria-hidden="true">
@@ -957,15 +842,6 @@ function RadialKindMenu({ open, cx, cy, currentKind, kinds, onPick, onClose, kin
 }
 
 Object.assign(window, { RadialKindMenu });
-
-
-/* ===== canvas.jsx ===== */
-/* 中央マップキャンバス（v2）
- * - 列追加/挿入時に fit() を呼ばず視点維持
- * - 選択ノードから接続候補（次列ノード）に光る○を表示、クリックで即結線
- * - マス下ラベル併記でアイコン意味の識別性を担保
- * - パン(Space+drag / middle drag) / ズーム(Ctrl+wheel or ボタン)
- */
 
 const NODE_W = 92;
 const NODE_H = 92;
@@ -1002,7 +878,6 @@ function edgePath(a, b) {
   return `M ${a.x + NODE_W/2 - 4} ${a.y} C ${a.x + bend} ${a.y}, ${b.x - bend} ${b.y}, ${b.x - NODE_W/2 + 4} ${b.y}`;
 }
 
-// ノードレンダラー
 function NodeMarker({ node, pos, selected, isPulse, iconSize, showLabel, theme, onSelect, onStartLink, onRemove }) {
   const kindDef = KIND_INDEX[node.kind] ?? KIND_INDEX.skirmish;
   const Icon = IconMap[node.kind] ?? IconMap.skirmish;
@@ -1012,13 +887,13 @@ function NodeMarker({ node, pos, selected, isPulse, iconSize, showLabel, theme, 
 
   return (
     <g transform={`translate(${pos.x} ${pos.y})`} className={`nd ${selected ? "sel" : ""} ${isPulse ? "pulse" : ""}`}>
-      {/* 選択リング */}
+      
       {selected && (
         <circle r={NODE_W/2 + 6} fill="none" stroke={theme.brass} strokeWidth="2" strokeDasharray="3 4">
           <animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="24s" repeatCount="indefinite" />
         </circle>
       )}
-      {/* ベースの六角プレート */}
+      
       <g>
         <path
           d="M -44 -24 L -30 -44 H 30 L 44 -24 V 24 L 30 44 H -30 L -44 24 Z"
@@ -1033,14 +908,14 @@ function NodeMarker({ node, pos, selected, isPulse, iconSize, showLabel, theme, 
           <circle cx="-30" cy="32" r="1.6" /><circle cx="30" cy="32" r="1.6" />
         </g>
       </g>
-      {/* アイコン */}
+      
       <foreignObject x={-iconSize/2} y={-iconSize/2} width={iconSize} height={iconSize} style={{ pointerEvents: "none" }}>
         <div xmlns="http://www.w3.org/1999/xhtml" style={{ width: "100%", height: "100%" }}>
           <Icon ink={theme.ink} dark={theme.background} midGray={theme.panelHi}
                 accent={tone === "blood" ? theme.bloodHi : theme.brass} warn={theme.warn} />
         </div>
       </foreignObject>
-      {/* テキスト併記（アイコン識別を担保） */}
+      
       {showLabel && (
         <g style={{ pointerEvents: "none" }}>
           <rect x={-40} y={NODE_H/2 + 6} width={80} height={20} rx={4}
@@ -1053,18 +928,18 @@ function NodeMarker({ node, pos, selected, isPulse, iconSize, showLabel, theme, 
           </text>
         </g>
       )}
-      {/* クリック領域 */}
+      
       <rect x="-46" y="-46" width="92" height="92" fill="transparent"
             style={{ cursor: "pointer" }}
             onPointerDown={(e) => { e.stopPropagation(); onSelect(node.id); }}
             onDoubleClick={(e) => { e.stopPropagation(); onStartLink?.(node.id); }} />
-      {/* 結線ハンドル（選択中のみ） */}
+      
       {selected && (
         <g transform={`translate(${NODE_W/2 + 16} 0)`}
            className="linkhandle"
            onPointerDown={(e) => { e.stopPropagation(); onStartLink?.(node.id, e); }}>
-          {/* 経路の暖色とは異なる青緑を、結線操作だけの記号として固定する。 */}
-          {/* 72 SVG px: 58%程度の縮小時でも約42画面pxを確保する透明タップ領域。 */}
+          
+          
           <circle r="36" fill="transparent" style={{ pointerEvents: "all" }} />
           <circle r="15" fill="#061b1d" stroke="#62fff3" strokeWidth="2.4" opacity="0.98" />
           <circle r="10.5" fill="#138f8a" stroke="#bffef5" strokeWidth="1.2" />
@@ -1073,7 +948,7 @@ function NodeMarker({ node, pos, selected, isPulse, iconSize, showLabel, theme, 
           <title>ここからドラッグ、または隣接列のノードをクリックで結線</title>
         </g>
       )}
-      {/* 削除ボタン: ノード左辺 → 上部へ移動 (列間挿入ボタンとの干渉を回避) */}
+      
       {selected && (
         <g transform={`translate(${NODE_W/2 - 12} ${-NODE_H/2 - 2})`}
            onPointerDown={(e) => { e.stopPropagation(); onRemove?.(node.id); }}>
@@ -1101,8 +976,8 @@ const MapCanvas = React.memo(function MapCanvas({
   const [ghostPos, setGhostPos] = React.useState(null);
   const [hoverCol, setHoverCol] = React.useState(null);
   const [dropHint, setDropHint] = React.useState(null);
-  const [hoverEdge, setHoverEdge] = React.useState(null); // "from-to" 形式のキー
-  const [edgeMenu, setEdgeMenu] = React.useState(null);    // {from, to, x, y} クリック時のポップオーバー
+  const [hoverEdge, setHoverEdge] = React.useState(null); 
+  const [edgeMenu, setEdgeMenu] = React.useState(null);    
   const layout = React.useMemo(() => computeLayout(map), [map.nodes, map.edges]);
   const theme = CSS_THEME;
   const didInitFit = React.useRef(false);
@@ -1113,7 +988,7 @@ const MapCanvas = React.memo(function MapCanvas({
     if (zoomReadoutRef.current) zoomReadoutRef.current.textContent = `${Math.round(view.zoom * 100)}%`;
   }, []);
 
-  // ビューポート観測
+  
   React.useEffect(() => {
     if (!wrapRef.current) return;
     const el = wrapRef.current;
@@ -1124,7 +999,7 @@ const MapCanvas = React.memo(function MapCanvas({
     return () => ro.disconnect();
   }, []);
 
-  // fit: 初回のみ or ユーザーが「全体表示」を押したとき
+  
   const fit = React.useCallback(() => {
     const pad = 60;
     const zx = (viewport.w - pad*2) / layout.width;
@@ -1134,7 +1009,7 @@ const MapCanvas = React.memo(function MapCanvas({
     applyView();
   }, [viewport, layout, applyView]);
 
-  // 初回だけ自動フィット
+  
   React.useEffect(() => {
     if (didInitFit.current) return;
     if (viewport.w > 100 && layout.width > 0) {
@@ -1143,7 +1018,7 @@ const MapCanvas = React.memo(function MapCanvas({
     }
   }, [viewport.w, layout.width, fit]);
 
-  // 外部から fit を呼べるように公開
+  
   React.useEffect(() => {
     window.__kagamiFit = fit;
     return () => { if (window.__kagamiFit === fit) delete window.__kagamiFit; };
@@ -1206,20 +1081,20 @@ const MapCanvas = React.memo(function MapCanvas({
       document.body.style.cursor = spaceHeldRef.current ? "grab" : "";
     }
   };
-  // マウスホイール単独でズーム（Ctrl不要）+ カーソル位置基準
-  // React の onWheel は passive の場合があるため、useEffect で直接アタッチ
+  
+  
   React.useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
     const onWheelNative = (e) => {
-      // マップキャンバス上でのホイールは常に「マップズーム」として吸収
+      
       e.preventDefault();
       const rect = el.getBoundingClientRect();
-      // canvas-stage は center原点で translate(pan) → scale(zoom) されるため、
-      // ラップ中心からのオフセットで補正すれば「カーソル位置を中心に」ズームできる
+      
+      
       const cx = e.clientX - rect.left - rect.width / 2;
       const cy = e.clientY - rect.top - rect.height / 2;
-      // 拡縮率: deltaY 負(上スクロール) = ズームイン
+      
       const factor = Math.pow(1.0015, -e.deltaY);
       const view = viewRef.current;
       const nextZ = Math.max(0.25, Math.min(3.0, Number((view.zoom * factor).toFixed(3))));
@@ -1236,7 +1111,7 @@ const MapCanvas = React.memo(function MapCanvas({
   }, [applyView]);
 
   const changeZoom = (delta) => {
-    // ボタンからのズームは中心基準
+    
     const view = viewRef.current;
     const nextZ = Math.max(0.25, Math.min(3.0, Number((view.zoom + delta).toFixed(3))));
     const ratio = nextZ / view.zoom;
@@ -1258,7 +1133,7 @@ const MapCanvas = React.memo(function MapCanvas({
     setLinkFrom(null); setGhostPos(null);
   };
 
-  // DnD: パレットからアイコン
+  
   const onDragOver = (e) => {
     if (!e.dataTransfer.types.includes("application/x-kind")) return;
     e.preventDefault();
@@ -1286,7 +1161,7 @@ const MapCanvas = React.memo(function MapCanvas({
     if (row >= MAX_NODES_PER_COLUMN) return;
     mutate(draft => {
       const id = mapOps.addNode(draft, stage, row, kind);
-      // 直前列の位置的に近いノードから結線
+      
       const prev = draft.nodes.filter(n => n.stage === stage - 1)
                               .sort((a, b) => Math.abs(a.row - row) - Math.abs(b.row - row));
       if (prev.length) mapOps.addEdge(draft, prev[0].id, id, "normal");
@@ -1296,10 +1171,10 @@ const MapCanvas = React.memo(function MapCanvas({
 
   const insertColumn = (atStage) => {
     mutate(draft => mapOps.addColumn(draft, atStage));
-    // 視点は動かさない
+    
   };
 
-  // 接続候補ハイライト: 選択中ノードに対して、隣接列の未接続ノードを表示
+  
   const candidateIds = React.useMemo(() => {
     if (!selectedId) return [];
     return mapOps.candidates(map, selectedId).map(n => n.id);
@@ -1327,13 +1202,13 @@ const MapCanvas = React.memo(function MapCanvas({
             </linearGradient>
           </defs>
 
-          {/* 列ガイド */}
+          
           {layout.columns.map((_, s) => {
             const x = CANVAS_PAD_X + NODE_W/2 + s * COL_GAP;
             return <line key={`cg${s}`} x1={x} x2={x} y1="24" y2={layout.height - 24}
                          stroke="url(#colgrad)" strokeWidth="1" strokeDasharray="2 6" />;
           })}
-          {/* 列ヘッダー (階層番号 / 総数) */}
+          
           {layout.columns.map((_, s) => {
             const x = CANVAS_PAD_X + NODE_W/2 + s * COL_GAP;
             const total = layout.columns.length;
@@ -1355,37 +1230,34 @@ const MapCanvas = React.memo(function MapCanvas({
             );
           })}
 
-          {/* 列間挿入ホットスポット
-              ノードや結線/削除ハンドル (ノード左右 ±50px 付近) と干渉しないよう、
-              キャンバス上端の帯 (列ヘッダー下) と下端の帯 (末尾＋ボタン下) の 2 箇所だけを反応領域にする。
-              円形「＋」ボタンは常にキャンバス下端に固定表示するのでノードと絶対に被らない。 */}
+          
           {Array.from({ length: layout.columns.length + 1 }).map((_, i) => {
             const x = CANVAS_PAD_X + i * COL_GAP;
             const isHover = hoverCol === i;
-            const btnY = layout.height - 22;   // 下端の＋ボタン位置
-            const bandTopY = 46;               // 上端帯 top (ヘッダーの直下)
+            const btnY = layout.height - 22;   
+            const bandTopY = 46;               
             const bandTopH = 24;
             const bandBotY = layout.height - 44;
             const bandBotH = 32;
             return (
               <g key={`ins${i}`} className="col-inserter" transform={`translate(${x} 0)`}
                  onPointerEnter={() => setHoverCol(i)} onPointerLeave={() => setHoverCol(cur => cur === i ? null : cur)}>
-                {/* 上端帯 - 列ヘッダー直下 */}
+                
                 <rect x={-18} y={bandTopY} width="36" height={bandTopH} fill="transparent" style={{ cursor: "pointer" }}
                       onClick={() => insertColumn(i)} />
-                {/* 下端帯 - キャンバス最下部 */}
+                
                 <rect x={-18} y={bandBotY} width="36" height={bandBotH} fill="transparent" style={{ cursor: "pointer" }}
                       onClick={() => insertColumn(i)} />
                 {isHover && (
                   <g style={{ pointerEvents: "none" }}>
-                    {/* 縦の破線ガイド (視認用) */}
+                    
                     <line x1="0" x2="0" y1={bandTopY + bandTopH} y2={bandBotY} stroke={theme.brass} strokeWidth="1.2" strokeDasharray="3 6" opacity="0.4" />
-                    {/* 上端の小さな＋ */}
+                    
                     <g transform={`translate(0 ${bandTopY + bandTopH/2})`}>
                       <circle r="10" fill={theme.panel} stroke={theme.brass} strokeWidth="1.5" opacity="0.9" />
                       <path d="M -4 0 H 4 M 0 -4 V 4" stroke={theme.brass} strokeWidth="1.6" strokeLinecap="round" />
                     </g>
-                    {/* 下端に固定の主ボタン */}
+                    
                     <g transform={`translate(0 ${btnY})`} style={{ pointerEvents: "auto", cursor: "pointer" }}
                        onClick={() => insertColumn(i)}>
                       <circle r="16" fill={theme.panel} stroke={theme.brass} strokeWidth="2" />
@@ -1398,7 +1270,7 @@ const MapCanvas = React.memo(function MapCanvas({
             );
           })}
 
-          {/* エッジ */}
+          
           {map.edges.map((e, i) => {
             const a = layout.positions[e.from]; const b = layout.positions[e.to];
             if (!a || !b) return null;
@@ -1410,7 +1282,7 @@ const MapCanvas = React.memo(function MapCanvas({
               : (e.style === "forced" ? theme.lineHi : (e.style === "hidden" ? theme.edge : theme.line));
             const key = `${e.from}__${e.to}`;
             const isHover = hoverEdge === key;
-            // 線の中間点(概算): 端点の平均 (ベジェの中間ではないが×ボタンの目印としては十分)
+            
             const midX = (a.x + b.x) / 2;
             const midY = (a.y + b.y) / 2;
             return (
@@ -1419,10 +1291,10 @@ const MapCanvas = React.memo(function MapCanvas({
                  onPointerLeave={() => setHoverEdge(cur => cur === key ? null : cur)}
                  onClick={(ev) => {
                    ev.stopPropagation();
-                   // クリックで種類切替 (明示的な削除は×ボタンでのみ)
+                   
                    mutate(dd => mapOps.toggleEdgeStyle(dd, e.from, e.to));
                  }}>
-                {/* 太い透明ヒット領域 (曲線に沿ってホバーを拾いやすく) */}
+                
                 <path d={d} fill="none" stroke="transparent" strokeWidth={Math.max(20, style.width + 18)} strokeLinecap="round" style={{ pointerEvents: "stroke" }} />
                 <path d={d} fill="none" stroke={stroke} strokeOpacity={e.style === "forced" ? "0.18" : "0.11"} strokeWidth={style.width + 8} strokeLinecap="round" style={{ pointerEvents: "none" }} />
                 <path d={d} fill="none" stroke={stroke}
@@ -1435,17 +1307,14 @@ const MapCanvas = React.memo(function MapCanvas({
                 )}
                 <title>{style.label}経路（クリック: 種類切替 / 中央の×で削除）</title>
 
-                {/* ホバー時: 削除×ボタン + 種類ピル (曲線中点に表示)
-                    3次ベジェの t=0.5 は端点平均と一致(制御点が P0,P3 と同 y のため)、
-                    したがって (midX, midY) は必ず曲線上の点。
-                    UI 全体を透明矩形で包み、UI と線本体の両方をホバー領域として保持する。 */}
+                
                 {isHover && (
                   <g transform={`translate(${midX} ${midY})`} style={{ pointerEvents: "auto" }}>
-                    {/* ホバー保持用の透明ハブ (UIから離れるまでホバー維持) */}
+                    
                     <rect x={-64} y={-30} width={128} height={60} fill="transparent" />
-                    {/* UI 台座: 曲線の真上に横並び配置 */}
+                    
                     <g transform="translate(0 -18)">
-                      {/* 種類ラベルピル (左) */}
+                      
                       <g transform="translate(-22 0)"
                          onClick={(ev) => { ev.stopPropagation(); mutate(dd => mapOps.toggleEdgeStyle(dd, e.from, e.to)); }}
                          style={{ cursor: "pointer" }}>
@@ -1457,7 +1326,7 @@ const MapCanvas = React.memo(function MapCanvas({
                         </text>
                         <title>クリックで種類切替 (通常→分岐→強制→隠し)</title>
                       </g>
-                      {/* 削除×ボタン (右) */}
+                      
                       <g transform="translate(20 0)"
                          onClick={(ev) => { ev.stopPropagation(); mutate(dd => mapOps.removeEdge(dd, e.from, e.to)); }}
                          style={{ cursor: "pointer" }}>
@@ -1472,13 +1341,13 @@ const MapCanvas = React.memo(function MapCanvas({
             );
           })}
 
-          {/* 結線ゴースト */}
+          
           {linkFrom && ghostPos && layout.positions[linkFrom] && (
             <path d={edgePath(layout.positions[linkFrom], ghostPos)}
                   fill="none" stroke={theme.brass} strokeDasharray="4 4" strokeWidth="2" />
           )}
 
-          {/* 接続候補ハイライト（選択ノードから隣接列へ） */}
+          
           {selectedId && candidateIds.map(cid => {
             const from = layout.positions[selectedId];
             const to = layout.positions[cid];
@@ -1489,11 +1358,11 @@ const MapCanvas = React.memo(function MapCanvas({
                    ev.stopPropagation();
                    mutate(d => mapOps.addEdge(d, selectedId, cid, "normal"));
                  }}>
-                {/* 候補ラインのプレビュー */}
+                
                 <path d={edgePath(from, to)}
                       fill="none" stroke={theme.brass} strokeOpacity="0.35"
                       strokeWidth="2.5" strokeDasharray="4 6" />
-                {/* 接続候補マーカー（相手ノードの右） */}
+                
                 <g transform={`translate(${to.x - NODE_W/2 - 12} ${to.y})`}>
                   <circle r="10" fill={theme.brass} fillOpacity="0.15" stroke={theme.brass} strokeWidth="2" strokeDasharray="2 2">
                     <animate attributeName="r" from="8" to="12" dur="1.4s" repeatCount="indefinite" />
@@ -1506,7 +1375,7 @@ const MapCanvas = React.memo(function MapCanvas({
             );
           })}
 
-          {/* ドロップヒント */}
+          
           {dropHint && (() => {
             const x = CANVAS_PAD_X + NODE_W/2 + dropHint.stage * COL_GAP;
             const col = map.nodes.filter(n => n.stage === dropHint.stage);
@@ -1522,7 +1391,7 @@ const MapCanvas = React.memo(function MapCanvas({
             );
           })()}
 
-          {/* ノード */}
+          
           {map.nodes.map(node => {
             const p = layout.positions[node.id];
             if (!p) return null;
@@ -1545,7 +1414,7 @@ const MapCanvas = React.memo(function MapCanvas({
             );
           })}
 
-          {/* 列末尾に「＋」 */}
+          
           {layout.columns.map((col, s) => {
             if (col.length >= MAX_NODES_PER_COLUMN) return null;
             const x = CANVAS_PAD_X + NODE_W/2 + s * COL_GAP;
@@ -1566,7 +1435,7 @@ const MapCanvas = React.memo(function MapCanvas({
         </svg>
       </div>
 
-      {/* キャンバスコントロール (右下エリア → 右上に移動して重ならないように) */}
+      
       <div className="canvas-controls" onPointerDown={e => e.stopPropagation()}>
         <button onClick={() => changeZoom(-0.12)} title="縮小">−</button>
         <button onClick={fit} title="全体表示 (Fit)">◫</button>
@@ -1629,15 +1498,6 @@ function MiniMap({ map, layout, theme }) {
 
 Object.assign(window, { MapCanvas, computeLayout });
 
-
-/* ===== panels.jsx ===== */
-/* フローティングパネル群 + Toolbar
- * v2: Kagami Map Studio ブランド、保存の背景選択、自動接続ボタン
- */
-
-// ─────────────────────────────────────
-// パレット
-// ─────────────────────────────────────
 function Palette({ selectedKind, setSelectedKind, mutate }) {
   const [collapsed, setCollapsed] = React.useState(false);
   const [pos, setPos] = React.useState(() => {
@@ -1704,9 +1564,6 @@ function Palette({ selectedKind, setSelectedKind, mutate }) {
   );
 }
 
-// ─────────────────────────────────────
-// インスペクタ
-// ─────────────────────────────────────
 function Inspector({ map, selectedId, mutate }) {
   const [collapsed, setCollapsed] = React.useState(false);
   const [pos, setPos] = React.useState(() => {
@@ -1827,9 +1684,6 @@ function Inspector({ map, selectedId, mutate }) {
   );
 }
 
-// ─────────────────────────────────────
-// エクスポート・ダイアログ
-// ─────────────────────────────────────
 function ExportDialog({ open, format, theme, onClose, onConfirm }) {
   const [bg, setBg] = React.useState("theme");
   const [scale, setScale] = React.useState(2);
@@ -1914,9 +1768,6 @@ function ExportDialog({ open, format, theme, onClose, onConfirm }) {
   );
 }
 
-// ─────────────────────────────────────
-// ツールバー
-// ─────────────────────────────────────
 function Toolbar({
   map, mutate, replace, undo, redo, canUndo, canRedo,
   onExportPng, onExportJpeg, onExportJson,
@@ -1965,7 +1816,7 @@ function Toolbar({
       commitPreviewTheme();
       return;
     }
-    // 色選択は高頻度イベント。最新値だけを次フレームにCSS変数へ反映し、Reactの再描画は確定時まで行わない。
+    
     if (!themePreviewFrame.current) {
       themePreviewFrame.current = window.requestAnimationFrame(() => {
         themePreviewFrame.current = 0;
@@ -2010,13 +1861,13 @@ function Toolbar({
                   <stop offset="100%" stopColor="#c8443c" />
                 </linearGradient>
               </defs>
-              {/* 鏡枠 */}
+              
               <path d="M 8 6 H 32 L 34 14 V 26 L 32 34 H 8 L 6 26 V 14 Z"
                     fill="#12101a" stroke="url(#brandg)" strokeWidth="2" strokeLinejoin="round" />
-              {/* 内側の鏡面 */}
+              
               <path d="M 12 10 H 28 L 30 16 V 24 L 28 30 H 12 L 10 24 V 16 Z"
                     fill="none" stroke="#d4a24b" strokeOpacity="0.6" strokeWidth="1" />
-              {/* 中央グラフ（3ノード） */}
+              
               <g fill="#d4a24b">
                 <circle cx="14" cy="20" r="2.2" />
                 <circle cx="20" cy="14" r="2.2" />
@@ -2133,12 +1984,6 @@ function Toolbar({
 
 Object.assign(window, { Palette, Inspector, Toolbar, ExportDialog });
 
-
-/* ===== app.jsx ===== */
-/* Kagami Map Studio: メインアプリ (v2)
- * - ExportDialog統合、背景選択、fitボタン、autoConnect、ラベル併記
- */
-
 function App() {
   const { map, mutate, replace, replaceTheme, undo, redo, canUndo, canRedo } = useMapHistory();
   const [selectedId, setSelectedId] = React.useState(null);
@@ -2147,7 +1992,7 @@ function App() {
   const [showThumb, setShowThumb] = React.useState(true);
   const [showLabels, setShowLabels] = React.useState(true);
   const [themeResetKey, setThemeResetKey] = React.useState(0);
-  // エクスポート・ダイアログ: format∈{png,jpeg,null}
+  
   const [exportModal, setExportModal] = React.useState(null);
   const activeTheme = map.theme;
   const activeMap = map;
@@ -2161,7 +2006,7 @@ function App() {
     notify.__t = window.setTimeout(() => setNotice(""), 2500);
   }, []);
 
-  // キーボードショートカット
+  
   React.useEffect(() => {
     const isEditable = (el) => {
       if (!el) return false;
@@ -2191,23 +2036,23 @@ function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, [undo, redo, selectedId, mutate]);
 
-  // SVGビルド（エクスポート用）
+  
   const buildExportSvg = (opts = {}) => {
     const { bg = "theme", raster = false } = opts;
     const source = document.querySelector(".route-svg");
     if (!source) return null;
     const svg = source.cloneNode(true);
     Object.entries(themeToCssVars(activeTheme)).forEach(([name, value]) => svg.style.setProperty(name, value));
-    // UI装飾除去
+    
     svg.querySelectorAll(".col-inserter, .add-node, .linkhandle").forEach(el => el.remove());
     svg.querySelectorAll(".nd.sel circle[stroke-dasharray]").forEach(el => el.remove());
-    // 選択削除ボタン(円)を除去
+    
     svg.querySelectorAll("g.sel > g > circle[fill='" + THEME.blood + "']").forEach(el => el.remove());
-    // 接続候補ハイライトを除去
+    
     svg.querySelectorAll("g[class*='cand']").forEach(el => {});
-    // 上記CSSクラスを持つグループは実際は key付き。安全のため animate要素を除去
+    
     svg.querySelectorAll("animate, animateTransform").forEach(el => el.remove());
-    // foreignObjectはCanvasへ描画すると出力用Canvasを汚染するため、PNG化時だけ内側のSVGへ置換する。
+    
     if (raster) {
       svg.querySelectorAll("foreignObject").forEach(fo => {
         const sourceIcon = fo.querySelector("svg");
@@ -2218,13 +2063,13 @@ function App() {
         fo.replaceWith(icon);
       });
     }
-    // 背景処理
+    
     const bgRect = svg.querySelector("rect[data-role='canvas-bg']");
     if (bgRect) {
       if (bg === "transparent") bgRect.setAttribute("fill", "transparent");
       else if (bg === "white")  bgRect.setAttribute("fill", "#f8f6ef");
     }
-    // MINIMAPは含めず、STAGEラベル等は含む（このsvgは.route-svgのみ）
+    
     svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
     return new XMLSerializer().serializeToString(svg);
   };
@@ -2249,7 +2094,7 @@ function App() {
       const canvas = document.createElement("canvas");
       canvas.width = layout.width * scale; canvas.height = layout.height * scale;
       const ctx = canvas.getContext("2d");
-      // 白背景はキャンバスにも塗る（PNGは透過境界で滲まないように）
+      
       if (bg === "white") { ctx.fillStyle = "#f8f6ef"; ctx.fillRect(0, 0, canvas.width, canvas.height); }
       ctx.scale(scale, scale);
       ctx.drawImage(img, 0, 0);
