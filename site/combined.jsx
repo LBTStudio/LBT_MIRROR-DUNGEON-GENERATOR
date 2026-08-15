@@ -448,6 +448,29 @@ const THEME = {
   bloodGlow:"rgba(200,68,60,.5)",
 };
 
+// 配色プレビューではSVG属性を再生成せず、app-rootのCSS変数だけを更新する。
+const CSS_THEME = Object.freeze({
+  background: "var(--bg)", panel: "var(--panel)", panelHi: "var(--panel-2)", edge: "var(--edge)",
+  ink: "var(--ink)", inkDim: "var(--ink-dim)", brass: "var(--brass)", brassHi: "var(--brass-hi)",
+  blood: "var(--blood)", bloodHi: "var(--blood-hi)", warn: "var(--warn)", line: "var(--line)", lineHi: "var(--line-hi)",
+});
+
+const THEME_PRESETS = [
+  { id: "dante", label: "既定", colors: { background: "#0b0a0d", panel: "#161318", panelHi: "#1e1a20", edge: "#2c262e", ink: "#eae3d5", inkDim: "#8a8375", brass: "#d4a24b", brassHi: "#e5b55e", blood: "#c8443c", bloodHi: "#e35b53", warn: "#f0d24b", line: "#7a5a48", lineHi: "#d4a24b" } },
+  { id: "paper", label: "羊皮紙", colors: { background: "#e8dfcd", panel: "#f4eddf", panelHi: "#fff8ea", edge: "#b8a78b", ink: "#302a24", inkDim: "#746957", brass: "#976b2c", brassHi: "#bd8a3b", blood: "#9a3f35", bloodHi: "#bf5d4d", warn: "#b47c18", line: "#9f8b69", lineHi: "#976b2c" } },
+  { id: "seaglass", label: "海硝子", colors: { background: "#081518", panel: "#10262a", panelHi: "#17343a", edge: "#2b5154", ink: "#d6eee7", inkDim: "#8ab3aa", brass: "#78c8b1", brassHi: "#a8e4d2", blood: "#d66359", bloodHi: "#ee8b75", warn: "#e1bf5a", line: "#477a74", lineHi: "#78c8b1" } },
+];
+
+function themeToCssVars(theme) {
+  return {
+    "--bg": theme.background, "--panel": theme.panel, "--panel-2": theme.panelHi,
+    "--edge": theme.edge, "--ink": theme.ink, "--ink-dim": theme.inkDim,
+    "--brass": theme.brass, "--brass-hi": theme.brassHi,
+    "--blood": theme.blood, "--blood-hi": theme.bloodHi,
+    "--warn": theme.warn, "--line": theme.line, "--line-hi": theme.lineHi,
+  };
+}
+
 // 接続線スタイル
 const EDGE_STYLES = {
   normal:  { label: "通常",   dash: "none",     width: 2.8, opacity: 0.85 },
@@ -644,6 +667,19 @@ function useMapHistory() {
     });
   }, []);
 
+  // 色変更はノード・接続を複製せず、連続プレビューの確定時に一つの履歴だけを記録する。
+  const replaceTheme = React.useCallback((theme) => {
+    setState(prev => {
+      const nextTheme = { ...prev.present.theme, ...theme };
+      if (Object.keys(nextTheme).every(key => nextTheme[key] === prev.present.theme[key])) return prev;
+      return {
+        past: [...prev.past, prev.present].slice(-HISTORY_LIMIT),
+        present: { ...prev.present, theme: nextTheme },
+        future: [],
+      };
+    });
+  }, []);
+
   const undo = React.useCallback(() => {
     setState(prev => {
       if (!prev.past.length) return prev;
@@ -670,7 +706,7 @@ function useMapHistory() {
 
   return {
     map: state.present,
-    mutate, replace, undo, redo,
+    mutate, replace, replaceTheme, undo, redo,
     canUndo: state.past.length > 0,
     canRedo: state.future.length > 0,
   };
@@ -1020,24 +1056,32 @@ function NodeMarker({ node, pos, selected, isPulse, iconSize, showLabel, theme, 
   );
 }
 
-function MapCanvas({
+const MapCanvas = React.memo(function MapCanvas({
   map, selectedId, setSelectedId,
   mutate, edgeMode, setEdgeMode,
   showLabels,
 }) {
   const wrapRef  = React.useRef(null);
   const svgRef   = React.useRef(null);
+  const stageRef = React.useRef(null);
+  const zoomReadoutRef = React.useRef(null);
   const [viewport, setViewport] = React.useState({ w: 800, h: 600 });
-  const [zoom, setZoom] = React.useState(1);
-  const [pan, setPan]   = React.useState({ x: 0, y: 0 });
+  const viewRef = React.useRef({ x: 0, y: 0, zoom: 1 });
   const [linkFrom, setLinkFrom] = React.useState(null);
   const [ghostPos, setGhostPos] = React.useState(null);
   const [hoverCol, setHoverCol] = React.useState(null);
   const [dropHint, setDropHint] = React.useState(null);
   const [hoverEdge, setHoverEdge] = React.useState(null); // "from-to" 形式のキー
   const [edgeMenu, setEdgeMenu] = React.useState(null);    // {from, to, x, y} クリック時のポップオーバー
-  const layout = React.useMemo(() => computeLayout(map), [map]);
+  const layout = React.useMemo(() => computeLayout(map), [map.nodes, map.edges]);
+  const theme = CSS_THEME;
   const didInitFit = React.useRef(false);
+
+  const applyView = React.useCallback(() => {
+    const view = viewRef.current;
+    if (stageRef.current) stageRef.current.style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.zoom})`;
+    if (zoomReadoutRef.current) zoomReadoutRef.current.textContent = `${Math.round(view.zoom * 100)}%`;
+  }, []);
 
   // ビューポート観測
   React.useEffect(() => {
@@ -1056,9 +1100,9 @@ function MapCanvas({
     const zx = (viewport.w - pad*2) / layout.width;
     const zy = (viewport.h - pad*2) / layout.height;
     const z  = Math.max(0.3, Math.min(1.6, Math.min(zx, zy)));
-    setZoom(z);
-    setPan({ x: 0, y: 0 });
-  }, [viewport, layout]);
+    viewRef.current = { x: 0, y: 0, zoom: z };
+    applyView();
+  }, [viewport, layout, applyView]);
 
   // 初回だけ自動フィット
   React.useEffect(() => {
@@ -1085,7 +1129,7 @@ function MapCanvas({
     return { x: p.x, y: p.y };
   };
 
-  const panRef = React.useRef(null);
+  const panGestureRef = React.useRef(null);
   const spaceHeldRef = React.useRef(false);
   React.useEffect(() => {
     const onKey = (e) => {
@@ -1104,7 +1148,7 @@ function MapCanvas({
 
   const onWrapPointerDown = (e) => {
     if (e.button === 1 || (e.button === 0 && spaceHeldRef.current)) {
-      panRef.current = { id: e.pointerId, x: e.clientX, y: e.clientY };
+      panGestureRef.current = { id: e.pointerId, x: e.clientX, y: e.clientY };
       e.currentTarget.setPointerCapture(e.pointerId);
       document.body.style.cursor = "grabbing";
     } else if (linkFrom) {
@@ -1114,19 +1158,21 @@ function MapCanvas({
     }
   };
   const onWrapPointerMove = (e) => {
-    if (panRef.current?.id === e.pointerId) {
-      const dx = e.clientX - panRef.current.x;
-      const dy = e.clientY - panRef.current.y;
-      setPan(p => ({ x: p.x + dx, y: p.y + dy }));
-      panRef.current = { id: e.pointerId, x: e.clientX, y: e.clientY };
+    if (panGestureRef.current?.id === e.pointerId) {
+      const dx = e.clientX - panGestureRef.current.x;
+      const dy = e.clientY - panGestureRef.current.y;
+      viewRef.current.x += dx;
+      viewRef.current.y += dy;
+      applyView();
+      panGestureRef.current = { id: e.pointerId, x: e.clientX, y: e.clientY };
     }
     if (linkFrom) {
       setGhostPos(clientToSvg(e.clientX, e.clientY));
     }
   };
   const onWrapPointerUp = (e) => {
-    if (panRef.current?.id === e.pointerId) {
-      panRef.current = null;
+    if (panGestureRef.current?.id === e.pointerId) {
+      panGestureRef.current = null;
       document.body.style.cursor = spaceHeldRef.current ? "grab" : "";
     }
   };
@@ -1145,30 +1191,31 @@ function MapCanvas({
       const cy = e.clientY - rect.top - rect.height / 2;
       // 拡縮率: deltaY 負(上スクロール) = ズームイン
       const factor = Math.pow(1.0015, -e.deltaY);
-      setZoom(prevZ => {
-        const nextZ = Math.max(0.25, Math.min(3.0, Number((prevZ * factor).toFixed(3))));
-        const ratio = nextZ / prevZ;
-        if (ratio !== 1) {
-          setPan(p => ({
-            x: cx - (cx - p.x) * ratio,
-            y: cy - (cy - p.y) * ratio,
-          }));
-        }
-        return nextZ;
-      });
+      const view = viewRef.current;
+      const nextZ = Math.max(0.25, Math.min(3.0, Number((view.zoom * factor).toFixed(3))));
+      const ratio = nextZ / view.zoom;
+      if (ratio !== 1) {
+        view.x = cx - (cx - view.x) * ratio;
+        view.y = cy - (cy - view.y) * ratio;
+        view.zoom = nextZ;
+        applyView();
+      }
     };
     el.addEventListener("wheel", onWheelNative, { passive: false });
     return () => el.removeEventListener("wheel", onWheelNative);
-  }, []);
+  }, [applyView]);
 
   const changeZoom = (delta) => {
     // ボタンからのズームは中心基準
-    setZoom(prevZ => {
-      const nextZ = Math.max(0.25, Math.min(3.0, Number((prevZ + delta).toFixed(3))));
-      const ratio = nextZ / prevZ;
-      if (ratio !== 1) setPan(p => ({ x: p.x * ratio, y: p.y * ratio }));
-      return nextZ;
-    });
+    const view = viewRef.current;
+    const nextZ = Math.max(0.25, Math.min(3.0, Number((view.zoom + delta).toFixed(3))));
+    const ratio = nextZ / view.zoom;
+    if (ratio !== 1) {
+      view.x *= ratio;
+      view.y *= ratio;
+      view.zoom = nextZ;
+      applyView();
+    }
   };
 
   const startLink = (nodeId, e) => {
@@ -1238,17 +1285,15 @@ function MapCanvas({
       onDrop={onDrop}
       onDragLeave={onDragLeave}
     >
-      <div className="canvas-stage" style={{
-        transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-      }}>
+      <div ref={stageRef} className="canvas-stage" style={{ transform: "translate(0px, 0px) scale(1)" }}>
         <svg ref={svgRef} width={layout.width} height={layout.height} viewBox={`0 0 ${layout.width} ${layout.height}`}
              xmlns="http://www.w3.org/2000/svg" className="route-svg">
-          <rect data-role="canvas-bg" width={layout.width} height={layout.height} fill={map.theme.background} rx="14" />
+          <rect data-role="canvas-bg" width={layout.width} height={layout.height} fill={theme.background} rx="14" />
           <defs>
             <linearGradient id="colgrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={map.theme.brass} stopOpacity="0" />
-              <stop offset="50%" stopColor={map.theme.brass} stopOpacity="0.25" />
-              <stop offset="100%" stopColor={map.theme.brass} stopOpacity="0" />
+              <stop offset="0%" stopColor={theme.brass} stopOpacity="0" />
+              <stop offset="50%" stopColor={theme.brass} stopOpacity="0.25" />
+              <stop offset="100%" stopColor={theme.brass} stopOpacity="0" />
             </linearGradient>
           </defs>
 
@@ -1266,13 +1311,13 @@ function MapCanvas({
             return (
               <g key={`ch${s}`}>
                 <text x={x} y={26} textAnchor="middle"
-                      fill={isLast ? map.theme.blood : map.theme.brass}
+                      fill={isLast ? theme.blood : theme.brass}
                       fontSize="11" letterSpacing="0.18em" fontWeight="700"
                       style={{ fontFamily: "'Bebas Neue', sans-serif" }}>
                   STAGE {String(s + 1).padStart(2, "0")}
                 </text>
                 <text x={x} y={40} textAnchor="middle"
-                      fill={map.theme.inkDim} fontSize="9" letterSpacing="0.1em"
+                      fill={theme.inkDim} fontSize="9" letterSpacing="0.1em"
                       style={{ fontFamily: "'JetBrains Mono', monospace" }}>
                   {s + 1} / {total}
                 </text>
@@ -1304,17 +1349,17 @@ function MapCanvas({
                 {isHover && (
                   <g style={{ pointerEvents: "none" }}>
                     {/* 縦の破線ガイド (視認用) */}
-                    <line x1="0" x2="0" y1={bandTopY + bandTopH} y2={bandBotY} stroke={THEME.brass} strokeWidth="1.2" strokeDasharray="3 6" opacity="0.4" />
+                    <line x1="0" x2="0" y1={bandTopY + bandTopH} y2={bandBotY} stroke={theme.brass} strokeWidth="1.2" strokeDasharray="3 6" opacity="0.4" />
                     {/* 上端の小さな＋ */}
                     <g transform={`translate(0 ${bandTopY + bandTopH/2})`}>
-                      <circle r="10" fill={THEME.panel} stroke={THEME.brass} strokeWidth="1.5" opacity="0.9" />
-                      <path d="M -4 0 H 4 M 0 -4 V 4" stroke={THEME.brass} strokeWidth="1.6" strokeLinecap="round" />
+                      <circle r="10" fill={theme.panel} stroke={theme.brass} strokeWidth="1.5" opacity="0.9" />
+                      <path d="M -4 0 H 4 M 0 -4 V 4" stroke={theme.brass} strokeWidth="1.6" strokeLinecap="round" />
                     </g>
                     {/* 下端に固定の主ボタン */}
                     <g transform={`translate(0 ${btnY})`} style={{ pointerEvents: "auto", cursor: "pointer" }}
                        onClick={() => insertColumn(i)}>
-                      <circle r="16" fill={THEME.panel} stroke={THEME.brass} strokeWidth="2" />
-                      <path d="M -6 0 H 6 M 0 -6 V 6" stroke={THEME.brass} strokeWidth="2" strokeLinecap="round" style={{ pointerEvents: "none" }} />
+                      <circle r="16" fill={theme.panel} stroke={theme.brass} strokeWidth="2" />
+                      <path d="M -6 0 H 6 M 0 -6 V 6" stroke={theme.brass} strokeWidth="2" strokeLinecap="round" style={{ pointerEvents: "none" }} />
                       <title>この位置に列を挿入</title>
                     </g>
                   </g>
@@ -1330,7 +1375,7 @@ function MapCanvas({
             const style = EDGE_STYLES[e.style] ?? EDGE_STYLES.normal;
             const d = edgePath(a, b);
             const active = selectedId && (e.from === selectedId || e.to === selectedId);
-            const stroke = active ? map.theme.brass : (e.style === "branch" ? map.theme.line : (e.style === "hidden" ? map.theme.edge : map.theme.lineHi));
+            const stroke = active ? theme.brass : (e.style === "branch" ? theme.line : (e.style === "hidden" ? theme.edge : theme.lineHi));
             const key = `${e.from}__${e.to}`;
             const isHover = hoverEdge === key;
             // 線の中間点(概算): 端点の平均 (ベジェの中間ではないが×ボタンの目印としては十分)
@@ -1354,7 +1399,7 @@ function MapCanvas({
                       strokeLinecap="round" strokeDasharray={style.dash}
                       style={{ pointerEvents: "none" }} />
                 {e.style === "forced" && (
-                  <path d={d} fill="none" stroke={map.theme.background} strokeWidth={style.width - 2.2} strokeLinecap="round" style={{ pointerEvents: "none" }} />
+                  <path d={d} fill="none" stroke={theme.background} strokeWidth={style.width - 2.2} strokeLinecap="round" style={{ pointerEvents: "none" }} />
                 )}
                 <title>{style.label}経路（クリック: 種類切替 / 中央の×で削除）</title>
 
@@ -1373,7 +1418,7 @@ function MapCanvas({
                          onClick={(ev) => { ev.stopPropagation(); mutate(dd => mapOps.toggleEdgeStyle(dd, e.from, e.to)); }}
                          style={{ cursor: "pointer" }}>
                         <rect x={-24} y={-10} width={48} height={20} rx={10}
-                              fill={THEME.bg} stroke={stroke} strokeWidth="1.5" fillOpacity="0.96" />
+                              fill={theme.background} stroke={stroke} strokeWidth="1.5" fillOpacity="0.96" />
                         <text x={0} y={4} textAnchor="middle" fill={stroke} fontSize="10.5" fontWeight="600"
                               style={{ fontFamily: "'Noto Sans JP', sans-serif" }}>
                           {style.label}
@@ -1384,7 +1429,7 @@ function MapCanvas({
                       <g transform="translate(20 0)"
                          onClick={(ev) => { ev.stopPropagation(); mutate(dd => mapOps.removeEdge(dd, e.from, e.to)); }}
                          style={{ cursor: "pointer" }}>
-                        <circle r="12" fill={THEME.blood} stroke={THEME.bg} strokeWidth="2" />
+                        <circle r="12" fill={theme.blood} stroke={theme.background} strokeWidth="2" />
                         <path d="M -4.5 -4.5 L 4.5 4.5 M 4.5 -4.5 L -4.5 4.5" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" />
                         <title>この接続線を削除</title>
                       </g>
@@ -1398,7 +1443,7 @@ function MapCanvas({
           {/* 結線ゴースト */}
           {linkFrom && ghostPos && layout.positions[linkFrom] && (
             <path d={edgePath(layout.positions[linkFrom], ghostPos)}
-                  fill="none" stroke={THEME.brass} strokeDasharray="4 4" strokeWidth="2" />
+                  fill="none" stroke={theme.brass} strokeDasharray="4 4" strokeWidth="2" />
           )}
 
           {/* 接続候補ハイライト（選択ノードから隣接列へ） */}
@@ -1414,15 +1459,15 @@ function MapCanvas({
                  }}>
                 {/* 候補ラインのプレビュー */}
                 <path d={edgePath(from, to)}
-                      fill="none" stroke={THEME.brass} strokeOpacity="0.35"
+                      fill="none" stroke={theme.brass} strokeOpacity="0.35"
                       strokeWidth="2.5" strokeDasharray="4 6" />
                 {/* 接続候補マーカー（相手ノードの右） */}
                 <g transform={`translate(${to.x - NODE_W/2 - 12} ${to.y})`}>
-                  <circle r="10" fill={THEME.brass} fillOpacity="0.15" stroke={THEME.brass} strokeWidth="2" strokeDasharray="2 2">
+                  <circle r="10" fill={theme.brass} fillOpacity="0.15" stroke={theme.brass} strokeWidth="2" strokeDasharray="2 2">
                     <animate attributeName="r" from="8" to="12" dur="1.4s" repeatCount="indefinite" />
                     <animate attributeName="fill-opacity" from="0.35" to="0.05" dur="1.4s" repeatCount="indefinite" />
                   </circle>
-                  <path d="M -4 0 H 4 M 0 -4 V 4" stroke={THEME.brass} strokeWidth="2" strokeLinecap="round" />
+                  <path d="M -4 0 H 4 M 0 -4 V 4" stroke={theme.brass} strokeWidth="2" strokeLinecap="round" />
                   <title>クリックでこのノードに接続</title>
                 </g>
               </g>
@@ -1440,7 +1485,7 @@ function MapCanvas({
               <g>
                 <path d="M -44 -24 L -30 -44 H 30 L 44 -24 V 24 L 30 44 H -30 L -44 24 Z"
                       transform={`translate(${x} ${y})`}
-                      fill={THEME.brass} fillOpacity="0.12" stroke={THEME.brass} strokeDasharray="4 4" strokeWidth="2" />
+                      fill={theme.brass} fillOpacity="0.12" stroke={theme.brass} strokeDasharray="4 4" strokeWidth="2" />
               </g>
             );
           })()}
@@ -1459,7 +1504,7 @@ function MapCanvas({
                   isPulse={!selectedId && node.kind === "origin"}
                   iconSize={map.theme.iconSize + 12}
                   showLabel={showLabels || map.theme.showLabels}
-                  theme={map.theme}
+                  theme={theme}
                   onSelect={(id) => setSelectedId(id)}
                   onStartLink={(id, e) => startLink(id, e)}
                   onRemove={(id) => mutate(d => mapOps.removeNode(d, id))}
@@ -1480,8 +1525,8 @@ function MapCanvas({
                  onClick={() => mutate(d => mapOps.addNode(d, s, col.length, "skirmish"))}
                  style={{ cursor: "pointer" }}>
                 <path d="M -44 -24 L -30 -44 H 30 L 44 -24 V 24 L 30 44 H -30 L -44 24 Z"
-                      fill="transparent" stroke={THEME.inkDim} strokeDasharray="4 4" strokeWidth="1.6" />
-                <path d="M -10 0 H 10 M 0 -10 V 10" stroke={THEME.inkDim} strokeWidth="2.6" strokeLinecap="round" />
+                      fill="transparent" stroke={theme.inkDim} strokeDasharray="4 4" strokeWidth="1.6" />
+                <path d="M -10 0 H 10 M 0 -10 V 10" stroke={theme.inkDim} strokeWidth="2.6" strokeLinecap="round" />
                 <title>この列にマスを追加</title>
               </g>
             );
@@ -1494,17 +1539,22 @@ function MapCanvas({
         <button onClick={() => changeZoom(-0.12)} title="縮小">−</button>
         <button onClick={fit} title="全体表示 (Fit)">◫</button>
         <button onClick={() => changeZoom(0.12)} title="拡大">＋</button>
-        <span className="zoom-readout">{Math.round(zoom * 100)}%</span>
+        <span ref={zoomReadoutRef} className="zoom-readout">100%</span>
       </div>
       <div className="center-crosshair" aria-hidden="true">
         <span/><span/>
       </div>
-      <MiniMap map={map} layout={layout} />
+      <MiniMap map={map} layout={layout} theme={theme} />
     </div>
   );
-}
+}, (prev, next) => (
+  prev.map.nodes === next.map.nodes && prev.map.edges === next.map.edges &&
+  prev.map.theme.iconSize === next.map.theme.iconSize && prev.map.theme.showLabels === next.map.theme.showLabels &&
+  prev.selectedId === next.selectedId && prev.showLabels === next.showLabels &&
+  prev.mutate === next.mutate && prev.setSelectedId === next.setSelectedId
+));
 
-function MiniMap({ map, layout }) {
+function MiniMap({ map, layout, theme }) {
   const [collapsed, setCollapsed] = React.useState(() => {
     try { return JSON.parse(localStorage.getItem("kagami-minimap-collapsed") ?? "false"); } catch { return false; }
   });
@@ -1524,18 +1574,18 @@ function MiniMap({ map, layout }) {
       </div>
       {!collapsed && (
         <svg width={SIZE} height={SIZE * 0.7} viewBox={`0 0 ${SIZE} ${SIZE * 0.7}`}>
-          <rect width="100%" height="100%" fill="#0a0a0d" rx="6" />
+          <rect width="100%" height="100%" fill={theme.background} rx="6" />
           <g transform={`translate(${(SIZE - mw)/2} ${(SIZE * 0.7 - mh)/2})`}>
-            <rect width={mw} height={mh} fill={THEME.panel} rx="4" />
+            <rect width={mw} height={mh} fill={theme.panel} rx="4" />
             {map.edges.map((e, i) => {
               const a = layout.positions[e.from]; const b = layout.positions[e.to];
               if (!a || !b) return null;
-              return <line key={i} x1={a.x*scale} y1={a.y*scale} x2={b.x*scale} y2={b.y*scale} stroke={THEME.lineHi} strokeOpacity="0.5" strokeWidth="1" />;
+              return <line key={i} x1={a.x*scale} y1={a.y*scale} x2={b.x*scale} y2={b.y*scale} stroke={theme.lineHi} strokeOpacity="0.5" strokeWidth="1" />;
             })}
             {map.nodes.map(n => {
               const p = layout.positions[n.id];
               if (!p) return null;
-              const c = KIND_INDEX[n.kind]?.tone === "blood" ? THEME.blood : KIND_INDEX[n.kind]?.tone === "brass" ? THEME.brass : THEME.ink;
+              const c = KIND_INDEX[n.kind]?.tone === "blood" ? theme.blood : KIND_INDEX[n.kind]?.tone === "brass" ? theme.brass : theme.ink;
               return <circle key={n.id} cx={p.x*scale} cy={p.y*scale} r="3" fill={c} />;
             })}
           </g>
@@ -1840,13 +1890,30 @@ function Toolbar({
   onExportPng, onExportJpeg, onExportJson,
   onReset, onFit, onAutoConnect,
   notify, showLabels, setShowLabels,
-  showThumb, setShowThumb
+  showThumb, setShowThumb,
+  activeTheme, onThemePreview, onThemeCommit
 }) {
   const fileRef = React.useRef(null);
   const [showTheme, setShowTheme] = React.useState(false);
   const [showExport, setShowExport] = React.useState(false);
   const themeRef = React.useRef(null);
   const exportRef = React.useRef(null);
+  const previewThemeRef = React.useRef(activeTheme);
+  const themeCommitTimer = React.useRef(null);
+
+  React.useEffect(() => {
+    previewThemeRef.current = activeTheme;
+  }, [activeTheme]);
+  React.useEffect(() => () => window.clearTimeout(themeCommitTimer.current), []);
+
+  const previewTheme = (changes, immediate = false) => {
+    const next = { ...previewThemeRef.current, ...changes };
+    previewThemeRef.current = next;
+    onThemePreview(next);
+    window.clearTimeout(themeCommitTimer.current);
+    if (immediate) onThemeCommit(next);
+    else themeCommitTimer.current = window.setTimeout(() => onThemeCommit(next), 180);
+  };
 
   React.useEffect(() => {
     const onDown = (e) => {
@@ -1932,13 +1999,20 @@ function Toolbar({
           {showTheme && (
             <div className="tb-popover">
               <label className="i-label">アイコンサイズ</label>
-              <input type="range" min="32" max="60" value={map.theme.iconSize}
+              <input type="range" min="32" max="60" value={activeTheme.iconSize}
                      onChange={e => replace({ ...map, theme: { ...map.theme, iconSize: Number(e.target.value) } })} />
               <label className="i-check">
                 <input type="checkbox" checked={showThumb}
                        onChange={e => setShowThumb(e.target.checked)} />
                 ミニマップを表示
               </label>
+              <label className="i-label" style={{ marginTop: 8 }}>配色プリセット</label>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 4, marginTop: 4 }}>
+                {THEME_PRESETS.map(preset => (
+                  <button key={preset.id} className="tb-btn" style={{ padding: "6px 4px", fontSize: 10 }}
+                          onClick={() => previewTheme(preset.colors, true)}>{preset.label}</button>
+                ))}
+              </div>
               <label className="i-label" style={{ marginTop: 8 }}>全体配色</label>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginTop: 4 }}>
                 {[
@@ -1948,8 +2022,8 @@ function Toolbar({
                 ].map(([label, key]) => (
                   <label key={key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, color: "var(--ink-dim)", fontSize: 11 }}>
                     {label}
-                    <input type="color" value={map.theme[key]}
-                           onChange={e => replace({ ...map, theme: { ...map.theme, [key]: e.target.value } })}
+                    <input type="color" value={activeTheme[key]}
+                           onChange={e => previewTheme({ [key]: e.target.value })}
                            title={`${label}の色`} style={{ width: 28, height: 22, padding: 0, border: 0, background: "transparent", cursor: "pointer" }} />
                   </label>
                 ))}
@@ -2000,14 +2074,21 @@ Object.assign(window, { Palette, Inspector, Toolbar, ExportDialog });
  */
 
 function App() {
-  const { map, mutate, replace, undo, redo, canUndo, canRedo } = useMapHistory();
+  const { map, mutate, replace, replaceTheme, undo, redo, canUndo, canRedo } = useMapHistory();
   const [selectedId, setSelectedId] = React.useState(null);
   const [selectedKind, setSelectedKind] = React.useState("skirmish");
   const [notice, setNotice] = React.useState("");
   const [showThumb, setShowThumb] = React.useState(true);
   const [showLabels, setShowLabels] = React.useState(true);
+  const [themePreview, setThemePreview] = React.useState(null);
   // エクスポート・ダイアログ: format∈{png,jpeg,null}
   const [exportModal, setExportModal] = React.useState(null);
+  const activeTheme = themePreview ?? map.theme;
+  const activeMap = themePreview ? { ...map, theme: activeTheme } : map;
+  const commitTheme = React.useCallback((theme) => {
+    replaceTheme(theme);
+    setThemePreview(null);
+  }, [replaceTheme]);
 
   const notify = React.useCallback((text) => {
     setNotice(text);
@@ -2051,6 +2132,7 @@ function App() {
     const source = document.querySelector(".route-svg");
     if (!source) return null;
     const svg = source.cloneNode(true);
+    Object.entries(themeToCssVars(activeTheme)).forEach(([name, value]) => svg.style.setProperty(name, value));
     // UI装飾除去
     svg.querySelectorAll(".col-inserter, .add-node, .linkhandle").forEach(el => el.remove());
     svg.querySelectorAll(".nd.sel circle[stroke-dasharray]").forEach(el => el.remove());
@@ -2122,7 +2204,7 @@ function App() {
   const bgLabel = (bg) => bg === "theme" ? "テーマ" : bg === "transparent" ? "透過" : "白";
 
   const onExportJson = () => {
-    downloadBlob("kagami-map.json", new Blob([JSON.stringify(map, null, 2)], { type: "application/json" }));
+    downloadBlob("kagami-map.json", new Blob([JSON.stringify(activeMap, null, 2)], { type: "application/json" }));
     notify("JSONセーブファイルを保存しました");
   };
 
@@ -2135,13 +2217,7 @@ function App() {
     window.__kagamiFit?.();
   };
 
-  const themeStyle = {
-    "--bg": map.theme.background, "--panel": map.theme.panel, "--panel-2": map.theme.panelHi,
-    "--edge": map.theme.edge, "--ink": map.theme.ink, "--ink-dim": map.theme.inkDim,
-    "--brass": map.theme.brass, "--brass-hi": map.theme.brassHi,
-    "--blood": map.theme.blood, "--blood-hi": map.theme.bloodHi,
-    "--warn": map.theme.warn, "--line": map.theme.line,
-  };
+  const themeStyle = themeToCssVars(activeTheme);
 
   return (
     <div className="app-root" style={themeStyle}>
@@ -2157,6 +2233,7 @@ function App() {
         notify={notify}
         showLabels={showLabels} setShowLabels={setShowLabels}
         showThumb={showThumb} setShowThumb={setShowThumb}
+        activeTheme={activeTheme} onThemePreview={setThemePreview} onThemeCommit={commitTheme}
       />
       <MapCanvas
         map={map} selectedId={selectedId} setSelectedId={setSelectedId}
@@ -2170,7 +2247,7 @@ function App() {
       <ExportDialog
         open={exportModal !== null}
         format={exportModal}
-        theme={map.theme}
+        theme={activeTheme}
         onClose={() => setExportModal(null)}
         onConfirm={(opts) => {
           const fmt = exportModal;

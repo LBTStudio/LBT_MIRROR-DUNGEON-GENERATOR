@@ -141,7 +141,7 @@
       top: calc(100% + 6px); right: 0;
       background: var(--panel); border: 1px solid var(--edge); border-radius: 6px;
       padding: 12px; width: 260px; box-shadow: var(--shadow);
-      z-index: 30;
+      z-index: 30; max-height: calc(100dvh - 92px); overflow-y: auto;
     }
     .tb-popover-export {
       padding: 4px; width: 240px;
@@ -491,6 +491,6 @@
 </head>
 <body>
   <div id="root"></div>
-  <script type="text/babel" data-presets="react" src="combined.jsx?rev=theme-save-2"></script>
+  <script type="text/babel" data-presets="react" src="combined.jsx?rev=performance-1"></script>
 </body>
 </html>
