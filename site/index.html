@@ -498,11 +498,54 @@
 
     
     @media (max-width: 768px) {
-      .toolbar { flex-wrap: wrap; padding: 8px; gap: 8px; }
-      .tb-group + .tb-group { border-left: 0; padding-left: 4px; }
+      .toolbar { flex-wrap: wrap; align-content: flex-start; padding: 8px; gap: 5px; }
+      .tb-group { padding: 0; gap: 4px; }
+      .tb-group + .tb-group { border-left: 0; padding-left: 0; }
+      .tb-brand-group { flex: 1 0 100%; padding: 0; margin: 0 0 2px; }
+      .brand-title { font-size: 20px; }
       .brand-sub { display: none; }
-      .fp.palette { top: 76px !important; left: 8px !important; width: 46px !important; }
-      .fp.inspector { right: 8px !important; bottom: 8px !important; width: 44px !important; }
+      .tb-btn, .tb-check { min-height: 38px; padding: 7px 10px; }
+      .tb-btn.icon-btn { min-width: 38px; padding: 7px 9px; }
+      .canvas-controls { top: 8px; right: 8px; padding: 4px; gap: 2px; }
+      .canvas-controls button { width: 36px; height: 36px; }
+      .zoom-readout { min-width: 38px; padding: 0 4px; }
+      .fp.is-mobile {
+        position: absolute !important;
+        left: 8px !important;
+        right: 8px !important;
+        top: auto !important;
+        bottom: 8px !important;
+        width: auto !important;
+        max-height: 54dvh;
+        z-index: 50;
+        border-radius: 12px;
+        box-shadow: 0 16px 42px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.04);
+      }
+      .fp.is-mobile .fp-head { min-height: 48px; padding: 10px 12px; cursor: default; }
+      .fp.is-mobile .fp-title { font-size: 14px; }
+      .fp.is-mobile .fp-btn { min-width: 36px; min-height: 36px; font-size: 14px; }
+      .fp.is-mobile.is-collapsed {
+        width: 52px !important;
+        min-height: 52px;
+        max-height: none;
+        right: auto !important;
+      }
+      .fp.palette.is-mobile.is-collapsed { left: 8px !important; bottom: 8px !important; }
+      .fp.inspector.is-mobile.is-collapsed { left: auto !important; right: 8px !important; bottom: 8px !important; }
+      .fp.is-mobile.is-collapsed .fp-head { min-height: 52px; padding: 6px; gap: 2px; justify-content: center; }
+      .fp.is-mobile.is-collapsed .fp-title { display: block; flex: 0 1 auto; font-size: 10px; letter-spacing: 0; }
+      .fp.is-mobile.is-collapsed .fp-btn { min-width: 22px; min-height: 34px; padding: 0; }
+      .fp.is-mobile .palette-body, .fp.is-mobile .inspector-body { max-height: calc(54dvh - 48px); overflow: auto; }
+      .fp.is-mobile .palette-body { padding: 10px 12px 14px; }
+      .fp.is-mobile .palette-hint { margin-bottom: 8px; }
+      .fp.is-mobile .palette-item { min-height: 56px; padding: 8px; }
+      .fp.is-mobile .palette-icon { width: 34px; height: 34px; flex-basis: 34px; }
+      .fp.is-mobile .palette-name { font-size: 13px; }
+      .fp.is-mobile .inspector-body { padding: 10px 14px 14px; }
+      .fp.is-mobile .i-kind { min-height: 52px; }
+      .fp.is-mobile .i-stepper button { flex-basis: 42px; height: 42px; }
+      .fp.is-mobile .tinybtn { width: 32px; height: 32px; }
+      .fp.is-mobile .btn { min-height: 42px; }
       .mini-map { display: none; }
       .helpbar { display: none; }
     }
@@ -510,6 +553,6 @@
 </head>
 <body>
   <div id="root"></div>
-  <script type="text/babel" data-presets="react" src="combined.jsx?rev=c735bbb"></script>
+  <script type="text/babel" data-presets="react" src="combined.jsx?rev=ui-mobile-sheet-6"></script>
 </body>
 </html>

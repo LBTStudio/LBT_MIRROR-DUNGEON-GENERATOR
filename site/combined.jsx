@@ -617,12 +617,12 @@ const mapOps = {
     map.nodes = map.nodes.filter(n => n.id !== id);
     map.edges = map.edges.filter(e => e.from !== id && e.to !== id);
   },
-  addColumn(map, atStage) {
+  addColumn(map, atStage, kind = "skirmish") {
     
     map.nodes.forEach(n => { if (n.stage >= atStage) n.stage += 1; });
     
     const id = uuid();
-    map.nodes.push({ id, stage: atStage, row: 0, kind: "skirmish", label: KIND_INDEX.skirmish.label });
+    map.nodes.push({ id, stage: atStage, row: 0, kind, label: KIND_INDEX[kind].label });
     return id;
   },
   removeColumn(map, atStage) {
@@ -961,13 +961,13 @@ function NodeMarker({ node, pos, selected, isPulse, iconSize, showLabel, theme, 
 const MapCanvas = React.memo(function MapCanvas({
   map, selectedId, setSelectedId,
   mutate, edgeMode, setEdgeMode,
-  showLabels,
+  showLabels, selectedKind,
 }) {
   const wrapRef  = React.useRef(null);
   const svgRef   = React.useRef(null);
   const stageRef = React.useRef(null);
   const zoomReadoutRef = React.useRef(null);
-  const [viewport, setViewport] = React.useState({ w: 800, h: 600 });
+  const [viewport, setViewport] = React.useState({ w: 0, h: 0 });
   const viewRef = React.useRef({ x: 0, y: 0, zoom: 1 });
   const [linkFrom, setLinkFrom] = React.useState(null);
   const [ghostPos, setGhostPos] = React.useState(null);
@@ -998,13 +998,18 @@ const MapCanvas = React.memo(function MapCanvas({
 
   
   const fit = React.useCallback(() => {
-    const pad = 60;
-    const zx = (viewport.w - pad*2) / layout.width;
+    const compact = window.innerWidth <= 768;
+    const pad = compact ? 16 : 60;
+    const paletteInset = !compact && !selectedId ? 316 : 0;
+    const inspectorInset = selectedId && !compact ? 420 : 0;
+    const zx = (viewport.w - pad*2 - paletteInset - inspectorInset) / layout.width;
     const zy = (viewport.h - pad*2) / layout.height;
-    const z  = Math.max(0.3, Math.min(1.6, Math.min(zx, zy)));
-    viewRef.current = { x: 0, y: 0, zoom: z };
+    const z  = Math.max(compact ? 0.48 : 0.3, Math.min(1.6, Math.min(zx, zy)));
+    const startFocusX = compact ? -((layout.width * z) / 2) + 52 : 0;
+    const desktopShiftX = (paletteInset - inspectorInset) / 2;
+    viewRef.current = { x: compact ? startFocusX : desktopShiftX, y: 0, zoom: z };
     applyView();
-  }, [viewport, layout, applyView]);
+  }, [viewport, layout, applyView, selectedId]);
 
   
   React.useEffect(() => {
@@ -1014,6 +1019,10 @@ const MapCanvas = React.memo(function MapCanvas({
       didInitFit.current = true;
     }
   }, [viewport.w, layout.width, fit]);
+
+  React.useEffect(() => {
+    if (didInitFit.current && selectedId && window.innerWidth > 768) fit();
+  }, [selectedId, fit]);
 
   
   React.useEffect(() => {
@@ -1032,6 +1041,8 @@ const MapCanvas = React.memo(function MapCanvas({
   };
 
   const panGestureRef = React.useRef(null);
+  const activePointersRef = React.useRef(new Map());
+  const pinchRef = React.useRef(null);
   const spaceHeldRef = React.useRef(false);
   React.useEffect(() => {
     const onKey = (e) => {
@@ -1049,6 +1060,26 @@ const MapCanvas = React.memo(function MapCanvas({
   }, []);
 
   const onWrapPointerDown = (e) => {
+    if (e.pointerType === "touch") {
+      activePointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      e.currentTarget.setPointerCapture?.(e.pointerId);
+      if (activePointersRef.current.size === 2) {
+        const [a, b] = [...activePointersRef.current.values()];
+        pinchRef.current = {
+          distance: Math.hypot(b.x - a.x, b.y - a.y),
+          center: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 },
+          view: { ...viewRef.current },
+        };
+        panGestureRef.current = null;
+        return;
+      }
+      if (e.target === e.currentTarget || e.target.dataset?.role === "canvas-bg") {
+        panGestureRef.current = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: false, touch: true };
+      } else if (linkFrom) {
+        setLinkFrom(null); setGhostPos(null);
+      }
+      return;
+    }
     if (e.button === 1 || (e.button === 0 && spaceHeldRef.current)) {
       panGestureRef.current = { id: e.pointerId, x: e.clientX, y: e.clientY };
       e.currentTarget.setPointerCapture(e.pointerId);
@@ -1060,6 +1091,31 @@ const MapCanvas = React.memo(function MapCanvas({
     }
   };
   const onWrapPointerMove = (e) => {
+    if (e.pointerType === "touch") {
+      if (activePointersRef.current.has(e.pointerId)) activePointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pinchRef.current && activePointersRef.current.size >= 2) {
+        const [a, b] = [...activePointersRef.current.values()];
+        const distance = Math.hypot(b.x - a.x, b.y - a.y);
+        const center = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+        const base = pinchRef.current;
+        const ratio = distance / Math.max(1, base.distance);
+        viewRef.current.zoom = Math.max(0.25, Math.min(3, Number((base.view.zoom * ratio).toFixed(3))));
+        viewRef.current.x = base.view.x + center.x - base.center.x;
+        viewRef.current.y = base.view.y + center.y - base.center.y;
+        applyView();
+        return;
+      }
+      if (panGestureRef.current?.id === e.pointerId) {
+        const dx = e.clientX - panGestureRef.current.x;
+        const dy = e.clientY - panGestureRef.current.y;
+        if (Math.hypot(dx, dy) > 3) panGestureRef.current.moved = true;
+        viewRef.current.x += dx;
+        viewRef.current.y += dy;
+        applyView();
+        panGestureRef.current = { ...panGestureRef.current, x: e.clientX, y: e.clientY };
+      }
+      return;
+    }
     if (panGestureRef.current?.id === e.pointerId) {
       const dx = e.clientX - panGestureRef.current.x;
       const dy = e.clientY - panGestureRef.current.y;
@@ -1073,6 +1129,16 @@ const MapCanvas = React.memo(function MapCanvas({
     }
   };
   const onWrapPointerUp = (e) => {
+    if (e.pointerType === "touch") {
+      const gesture = panGestureRef.current?.id === e.pointerId ? panGestureRef.current : null;
+      activePointersRef.current.delete(e.pointerId);
+      if (activePointersRef.current.size < 2) pinchRef.current = null;
+      if (gesture) {
+        panGestureRef.current = null;
+        if (!gesture.moved && (e.target === e.currentTarget || e.target.dataset?.role === "canvas-bg")) setSelectedId(null);
+      }
+      return;
+    }
     if (panGestureRef.current?.id === e.pointerId) {
       panGestureRef.current = null;
       document.body.style.cursor = spaceHeldRef.current ? "grab" : "";
@@ -1130,6 +1196,17 @@ const MapCanvas = React.memo(function MapCanvas({
     setLinkFrom(null); setGhostPos(null);
   };
 
+  const addNodeAt = (stage, row, kind = selectedKind) => {
+    let id = null;
+    mutate(draft => {
+      id = mapOps.addNode(draft, stage, row, kind);
+      const prev = draft.nodes.filter(n => n.stage === stage - 1)
+                              .sort((a, b) => Math.abs(a.row - row) - Math.abs(b.row - row));
+      if (prev.length) mapOps.addEdge(draft, prev[0].id, id, "normal");
+    });
+    if (id) setSelectedId(id);
+  };
+
   
   const onDragOver = (e) => {
     if (!e.dataTransfer.types.includes("application/x-kind")) return;
@@ -1156,19 +1233,14 @@ const MapCanvas = React.memo(function MapCanvas({
     const usedRows = new Set(colNodes.map(n => n.row));
     let row = 0; while (usedRows.has(row) && row < MAX_NODES_PER_COLUMN) row += 1;
     if (row >= MAX_NODES_PER_COLUMN) return;
-    mutate(draft => {
-      const id = mapOps.addNode(draft, stage, row, kind);
-      
-      const prev = draft.nodes.filter(n => n.stage === stage - 1)
-                              .sort((a, b) => Math.abs(a.row - row) - Math.abs(b.row - row));
-      if (prev.length) mapOps.addEdge(draft, prev[0].id, id, "normal");
-    });
+    addNodeAt(stage, row, kind);
   };
   const onDragLeave = () => setDropHint(null);
 
   const insertColumn = (atStage) => {
-    mutate(draft => mapOps.addColumn(draft, atStage));
-    
+    let id = null;
+    mutate(draft => { id = mapOps.addColumn(draft, atStage, selectedKind); });
+    if (id) setSelectedId(id);
   };
 
   
@@ -1420,7 +1492,7 @@ const MapCanvas = React.memo(function MapCanvas({
             const y = top + col.length * ROW_GAP;
             return (
               <g key={`add-${s}`} className="add-node" transform={`translate(${x} ${y})`}
-                 onClick={() => mutate(d => mapOps.addNode(d, s, col.length, "skirmish"))}
+                 onClick={() => addNodeAt(s, col.length)}
                  style={{ cursor: "pointer" }}>
                 <path d="M -44 -24 L -30 -44 H 30 L 44 -24 V 24 L 30 44 H -30 L -44 24 Z"
                       fill="transparent" stroke={theme.inkDim} strokeDasharray="4 4" strokeWidth="1.6" />
@@ -1449,6 +1521,7 @@ const MapCanvas = React.memo(function MapCanvas({
   prev.map.nodes === next.map.nodes && prev.map.edges === next.map.edges &&
   prev.map.theme.iconSize === next.map.theme.iconSize && prev.map.theme.showLabels === next.map.theme.showLabels &&
   prev.selectedId === next.selectedId && prev.showLabels === next.showLabels &&
+  prev.selectedKind === next.selectedKind &&
   prev.mutate === next.mutate && prev.setSelectedId === next.setSelectedId
 ));
 
@@ -1495,12 +1568,30 @@ function MiniMap({ map, layout, theme }) {
 
 Object.assign(window, { MapCanvas, computeLayout });
 
-function Palette({ selectedKind, setSelectedKind, mutate }) {
-  const [collapsed, setCollapsed] = React.useState(false);
+function useCompactViewport() {
+  const [compact, setCompact] = React.useState(() => window.matchMedia?.("(max-width: 768px)")?.matches ?? false);
+  React.useEffect(() => {
+    const media = window.matchMedia?.("(max-width: 768px)");
+    if (!media) return undefined;
+    const sync = () => setCompact(media.matches);
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
+  return compact;
+}
+
+function Palette({ selectedKind, setSelectedKind, mutate, mobileSheet, setMobileSheet, selectedId }) {
+  const compact = useCompactViewport();
+  const [collapsed, setCollapsed] = React.useState(() => window.matchMedia?.("(max-width: 768px)")?.matches ?? false);
   const [pos, setPos] = React.useState(() => {
     try { return JSON.parse(localStorage.getItem("kagami-palette-pos") ?? "null") ?? { x: 24, y: 96 }; } catch { return { x: 24, y: 96 }; }
   });
   React.useEffect(() => { localStorage.setItem("kagami-palette-pos", JSON.stringify(pos)); }, [pos]);
+  React.useEffect(() => { if (compact) setCollapsed(true); }, [compact]);
+  React.useEffect(() => { if (!compact && selectedId) setCollapsed(true); }, [compact, selectedId]);
+  const isCollapsed = compact ? mobileSheet !== "palette" : collapsed;
+  const toggle = () => compact ? setMobileSheet(isCollapsed ? "palette" : null) : setCollapsed(v => !v);
   const dragRef = React.useRef(null);
   const onHeadDown = (e) => {
     if (e.target.closest("button")) return;
@@ -1514,14 +1605,15 @@ function Palette({ selectedKind, setSelectedKind, mutate }) {
   const onHeadUp = (e) => { if (dragRef.current?.id === e.pointerId) dragRef.current = null; };
 
   return (
-    <div className="fp palette" style={{ left: pos.x, top: pos.y, width: collapsed ? 48 : 268 }}>
-      <div className="fp-head" onPointerDown={onHeadDown} onPointerMove={onHeadMove} onPointerUp={onHeadUp}>
-        <span className="fp-title">{collapsed ? "" : "マス種類"}</span>
-        <button className="fp-btn" type="button" title={collapsed ? "展開" : "畳む"} onPointerDown={e => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); setCollapsed(v => !v); }}>
-          {collapsed ? "▶" : "◀"}
+    <div className={`fp palette ${isCollapsed ? "is-collapsed" : ""} ${compact ? "is-mobile" : ""}`} style={{ left: pos.x, top: pos.y, width: isCollapsed ? 48 : 268 }}>
+      <div className="fp-head" onPointerDown={onHeadDown} onPointerMove={onHeadMove} onPointerUp={onHeadUp}
+           onClick={() => { if (compact && isCollapsed) setMobileSheet("palette"); }}>
+        <span className="fp-title">{isCollapsed ? "マス" : "マス種類"}</span>
+        <button className="fp-btn" type="button" title={isCollapsed ? "展開" : "畳む"} onPointerDown={e => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); toggle(); }}>
+          {isCollapsed ? "▲" : "▼"}
         </button>
       </div>
-      {!collapsed && (
+      {!isCollapsed && (
         <div className="palette-body">
           <p className="palette-hint">ドラッグで配置。<kbd>1</kbd>〜<kbd>8</kbd> でも切替。</p>
           <div className="palette-grid">
@@ -1534,7 +1626,7 @@ function Palette({ selectedKind, setSelectedKind, mutate }) {
                         className={`palette-item ${isSel ? "on" : ""}`}
                         draggable
                         onDragStart={(e) => { e.dataTransfer.setData("application/x-kind", k.id); e.dataTransfer.effectAllowed = "copy"; }}
-                        onClick={() => setSelectedKind(k.id)}
+                        onClick={() => { setSelectedKind(k.id); if (compact) setMobileSheet(null); }}
                         title={`${k.label} — ${k.desc} (キー ${idx + 1})`}
                         style={{ borderColor: isSel ? tone : "transparent" }}>
                   <div className="palette-icon palette-icon-quiet" style={{ background: THEME.bg }}>
@@ -1561,21 +1653,32 @@ function Palette({ selectedKind, setSelectedKind, mutate }) {
   );
 }
 
-function Inspector({ map, selectedId, mutate }) {
-  const [collapsed, setCollapsed] = React.useState(false);
+function Inspector({ map, selectedId, mutate, mobileSheet, setMobileSheet }) {
+  const compact = useCompactViewport();
+  const [collapsed, setCollapsed] = React.useState(() => !selectedId || (window.matchMedia?.("(max-width: 768px)")?.matches ?? false));
   const [pos, setPos] = React.useState(() => {
     try { return JSON.parse(localStorage.getItem("kagami-inspector-pos") ?? "null") ?? { right: 24, bottom: 24 }; } catch { return { right: 24, bottom: 24 }; }
   });
   React.useEffect(() => { localStorage.setItem("kagami-inspector-pos", JSON.stringify(pos)); }, [pos]);
 
   const node = map.nodes.find(n => n.id === selectedId);
+  React.useEffect(() => {
+    if (node) {
+      if (compact) setMobileSheet("inspector");
+      else setCollapsed(false);
+    } else if (!compact) {
+      setCollapsed(true);
+    }
+  }, [compact, node?.id, setMobileSheet]);
+  const isCollapsed = compact ? mobileSheet !== "inspector" : collapsed;
+  const toggle = () => compact ? setMobileSheet(isCollapsed ? "inspector" : null) : setCollapsed(v => !v);
   if (!node) return (
-    <div className="fp inspector empty" style={{ right: pos.right, bottom: pos.bottom, width: collapsed ? 44 : 300 }}>
-      <div className="fp-head" style={{ cursor: "default" }}>
-        <span className="fp-title">{collapsed ? "" : "プロパティ"}</span>
-        <button className="fp-btn" type="button" onClick={(e) => { e.stopPropagation(); setCollapsed(v => !v); }} title={collapsed ? "展開" : "畳む"}>{collapsed ? "◀" : "▶"}</button>
+    <div className={`fp inspector empty ${isCollapsed ? "is-collapsed" : ""} ${compact ? "is-mobile" : ""}`} style={{ right: pos.right, bottom: pos.bottom, width: isCollapsed ? 44 : 300 }}>
+      <div className="fp-head" style={{ cursor: compact ? "pointer" : "default" }} onClick={() => { if (compact && isCollapsed) setMobileSheet("inspector"); }}>
+        <span className="fp-title">{isCollapsed ? "編集" : "プロパティ"}</span>
+        <button className="fp-btn" type="button" onClick={(e) => { e.stopPropagation(); toggle(); }} title={isCollapsed ? "展開" : "畳む"}>{isCollapsed ? "▲" : "▼"}</button>
       </div>
-      {!collapsed && <div className="inspector-body empty">
+      {!isCollapsed && <div className="inspector-body empty">
           <p>マップ上のマスを選択してください</p>
           <p className="dim">・空白クリックで選択解除<br/>・<kbd>Space</kbd>+ドラッグでパン<br/>・<kbd>マウスホイール</kbd>で拡縮<br/>・選択ノードから点滅する◯を<b>クリック</b>で結線</p>
         </div>}
@@ -1587,12 +1690,12 @@ function Inspector({ map, selectedId, mutate }) {
   const outbound = map.edges.filter(e => e.from === node.id);
 
   return (
-    <div className="fp inspector" style={{ right: pos.right, bottom: pos.bottom, width: collapsed ? 44 : 300 }}>
-      <div className="fp-head">
-        <span className="fp-title">{collapsed ? "" : `#${node.stage + 1}-${node.row + 1} ${kindDef?.label ?? ""}`}</span>
-        <button className="fp-btn" type="button" onClick={(e) => { e.stopPropagation(); setCollapsed(v => !v); }} title={collapsed ? "展開" : "畳む"}>{collapsed ? "◀" : "▶"}</button>
+    <div className={`fp inspector ${isCollapsed ? "is-collapsed" : ""} ${compact ? "is-mobile" : ""}`} style={{ right: pos.right, bottom: pos.bottom, width: isCollapsed ? 44 : 300 }}>
+      <div className="fp-head" onClick={() => { if (compact && isCollapsed) setMobileSheet("inspector"); }}>
+        <span className="fp-title">{isCollapsed ? "編集" : `#${node.stage + 1}-${node.row + 1} ${kindDef?.label ?? ""}`}</span>
+        <button className="fp-btn" type="button" onClick={(e) => { e.stopPropagation(); toggle(); }} title={isCollapsed ? "展開" : "畳む"}>{isCollapsed ? "▲" : "▼"}</button>
       </div>
-      {!collapsed && (
+      {!isCollapsed && (
         <div className="inspector-body">
           <label className="i-label">種別</label>
           <div className="i-kinds">
@@ -1771,7 +1874,7 @@ function Toolbar({
   onReset, onFit, onAutoConnect,
   notify, showLabels, setShowLabels,
   showThumb, setShowThumb,
-  activeTheme, onThemeCommit
+  activeTheme, onThemeCommit, selectedKind, setSelectedId
 }) {
   const fileRef = React.useRef(null);
   const [showTheme, setShowTheme] = React.useState(false);
@@ -1890,7 +1993,11 @@ function Toolbar({
 
       <div className="tb-group">
         <button className="tb-btn"
-                onClick={() => mutate(d => mapOps.addColumn(d, (Math.max(0, ...d.nodes.map(n => n.stage))) + 1))}
+                onClick={() => {
+                  let id = null;
+                  mutate(d => { id = mapOps.addColumn(d, (Math.max(0, ...d.nodes.map(n => n.stage))) + 1, selectedKind); });
+                  if (id) setSelectedId(id);
+                }}
                 title="末尾に列を追加（視点は動かしません）">列 ＋</button>
         <button className="tb-btn" onClick={onAutoConnect}
                 title="扇状分岐・持続レーン・菱形再合流で自動接続">自動接続</button>
@@ -1985,6 +2092,7 @@ function App() {
   const { map, mutate, replace, replaceTheme, undo, redo, canUndo, canRedo } = useMapHistory();
   const [selectedId, setSelectedId] = React.useState(null);
   const [selectedKind, setSelectedKind] = React.useState("skirmish");
+  const [mobileSheet, setMobileSheet] = React.useState(null);
   const [notice, setNotice] = React.useState("");
   const [showThumb, setShowThumb] = React.useState(true);
   const [showLabels, setShowLabels] = React.useState(true);
@@ -2155,14 +2263,18 @@ function App() {
         showLabels={showLabels} setShowLabels={setShowLabels}
         showThumb={showThumb} setShowThumb={setShowThumb}
         activeTheme={activeTheme} onThemeCommit={commitTheme}
+        selectedKind={selectedKind} setSelectedId={setSelectedId}
       />
       <MapCanvas
         map={map} selectedId={selectedId} setSelectedId={setSelectedId}
         mutate={mutate}
         showLabels={showLabels}
+        selectedKind={selectedKind}
       />
-      <Palette selectedKind={selectedKind} setSelectedKind={setSelectedKind} mutate={mutate} />
-      <Inspector map={map} selectedId={selectedId} mutate={mutate} />
+      <Palette selectedKind={selectedKind} setSelectedKind={setSelectedKind} mutate={mutate}
+               mobileSheet={mobileSheet} setMobileSheet={setMobileSheet} selectedId={selectedId} />
+      <Inspector map={map} selectedId={selectedId} mutate={mutate}
+                 mobileSheet={mobileSheet} setMobileSheet={setMobileSheet} />
       {!showThumb && <style>{`.mini-map { display: none; }`}</style>}
       {notice && <div className="notice">{notice}</div>}
       <ExportDialog
