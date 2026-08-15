@@ -411,18 +411,17 @@ function baseMap() {
   const s2c         = { id: uuid(), stage: 1, row: 2, kind: "event",      label: "イベント" };
   
   const s3a         = { id: uuid(), stage: 2, row: 0, kind: "focused",    label: "集中戦闘" };
-  const s3b         = { id: uuid(), stage: 2, row: 1, kind: "supply",     label: "ショップ" };
+  const s3b         = { id: uuid(), stage: 2, row: 1, kind: "skirmish",   label: "一般戦闘" };
   
   const s4a         = { id: uuid(), stage: 3, row: 0, kind: "skirmish",   label: "一般戦闘" };
   const s4b         = { id: uuid(), stage: 3, row: 1, kind: "elite",      label: "精鋭戦闘" };
   const s4c         = { id: uuid(), stage: 3, row: 2, kind: "abnormality",label: "幻想体戦闘" };
   
-  const s5a         = { id: uuid(), stage: 4, row: 0, kind: "focused",    label: "集中戦闘" };
-  const s5b         = { id: uuid(), stage: 4, row: 1, kind: "supply",     label: "ショップ" };
+  const s5b         = { id: uuid(), stage: 4, row: 0, kind: "supply",     label: "ショップ" };
   
   const bossA       = { id: uuid(), stage: 5, row: 0, kind: "boss",       label: "ボス戦闘" };
 
-  const nodes = [origin, s2a, s2b, s2c, s3a, s3b, s4a, s4b, s4c, s5a, s5b, bossA];
+  const nodes = [origin, s2a, s2b, s2c, s3a, s3b, s4a, s4b, s4c, s5b, bossA];
   
   const B = "normal";
   const edges = [
@@ -441,12 +440,10 @@ function baseMap() {
     { from: s3b.id,   to: s4b.id, style: B },
     { from: s3b.id,   to: s4c.id, style: B },
     
-    { from: s4a.id,   to: s5a.id, style: B },
-    { from: s4b.id,   to: s5a.id, style: B },
+    { from: s4a.id,   to: s5b.id, style: B },
     { from: s4b.id,   to: s5b.id, style: B },
     { from: s4c.id,   to: s5b.id, style: B },
     
-    { from: s5a.id,   to: bossA.id, style: "forced" },
     { from: s5b.id,   to: bossA.id, style: "forced" },
   ];
   return {
