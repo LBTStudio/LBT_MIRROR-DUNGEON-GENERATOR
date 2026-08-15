@@ -1000,14 +1000,14 @@ const MapCanvas = React.memo(function MapCanvas({
   const fit = React.useCallback(() => {
     const compact = window.innerWidth <= 768;
     const pad = compact ? 16 : 60;
-    const paletteInset = !compact && !selectedId ? 316 : 0;
     const inspectorInset = selectedId && !compact ? 420 : 0;
-    const zx = (viewport.w - pad*2 - paletteInset - inspectorInset) / layout.width;
+    const zx = (viewport.w - pad*2 - inspectorInset) / layout.width;
     const zy = (viewport.h - pad*2) / layout.height;
     const z  = Math.max(compact ? 0.48 : 0.3, Math.min(1.6, Math.min(zx, zy)));
-    const startFocusX = compact ? -((layout.width * z) / 2) + 52 : 0;
-    const desktopShiftX = (paletteInset - inspectorInset) / 2;
-    viewRef.current = { x: compact ? startFocusX : desktopShiftX, y: 0, zoom: z };
+    const centeredX = compact ? -(layout.width * z) / 2 : 0;
+    const centeredY = compact ? -(layout.height * z) / 2 : 0;
+    const desktopShiftX = inspectorInset ? -inspectorInset / 2 : 0;
+    viewRef.current = { x: centeredX + (compact ? 0 : desktopShiftX), y: centeredY, zoom: z };
     applyView();
   }, [viewport, layout, applyView, selectedId]);
 
@@ -1473,7 +1473,7 @@ const MapCanvas = React.memo(function MapCanvas({
                   selected={selectedId === node.id}
                   isPulse={!selectedId && node.kind === "origin"}
                   iconSize={map.theme.iconSize + 12}
-                  showLabel={showLabels || map.theme.showLabels}
+                  showLabel={showLabels}
                   theme={theme}
                   onSelect={(id) => setSelectedId(id)}
                   onStartLink={(id, e) => startLink(id, e)}
@@ -1615,7 +1615,7 @@ function Palette({ selectedKind, setSelectedKind, mutate, mobileSheet, setMobile
       </div>
       {!isCollapsed && (
         <div className="palette-body">
-          <p className="palette-hint">ドラッグで配置。<kbd>1</kbd>〜<kbd>8</kbd> でも切替。</p>
+          <p className="palette-hint">{compact ? "種別を選択して、列内の＋から追加できます。" : <>ドラッグで配置。<kbd>1</kbd>〜<kbd>8</kbd> でも切替。</>}</p>
           <div className="palette-grid">
             {KINDS.map((k, idx) => {
               const Icon = IconMap[k.id];
@@ -1680,7 +1680,7 @@ function Inspector({ map, selectedId, mutate, mobileSheet, setMobileSheet }) {
       </div>
       {!isCollapsed && <div className="inspector-body empty">
           <p>マップ上のマスを選択してください</p>
-          <p className="dim">・空白クリックで選択解除<br/>・<kbd>Space</kbd>+ドラッグでパン<br/>・<kbd>マウスホイール</kbd>で拡縮<br/>・選択ノードから点滅する◯を<b>クリック</b>で結線</p>
+          <p className="dim">{compact ? <>・空白を指でドラッグしてマップを移動<br/>・2本指の開閉で拡大・縮小<br/>・マスをタップして編集シートを開く<br/>・選択したマスから青緑の＋をタップして結線</> : <>・空白クリックで選択解除<br/>・<kbd>Space</kbd>+ドラッグでパン<br/>・<kbd>マウスホイール</kbd>で拡縮<br/>・選択ノードから点滅する◯を<b>クリック</b>で結線</>}</p>
         </div>}
     </div>
   );
@@ -2336,7 +2336,7 @@ if (runtimeParams.get("mobile-test") === "1") {
       <div class="mobile-test-device">
         <iframe class="mobile-test-frame" title="Kagami Map Studio モバイルUI" src="?mobile-preview=1"></iframe>
       </div>
-      <p class="mobile-test-note">390 × 844 px の実モバイルレイアウトです。枠内でマス種類の展開、ノード選択、空白ドラッグ、ピンチ相当の操作を確認できます。</p>
+      <p class="mobile-test-note">390 × 844 px の実モバイルレイアウトです。枠内で下部シートを開き、空白ドラッグでパン、マウスホイールで拡縮を確認できます。スマートフォンでは同じ箇所を2本指で拡縮します。</p>
     </main>
   `;
 } else {
