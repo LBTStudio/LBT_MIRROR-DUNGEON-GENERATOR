@@ -769,11 +769,12 @@ const mapOps = {
     map.title = b.title;
   },
   /*
-   * 自動接続：列型の鏡ダンジョン移動図に合わせ、隣接列だけを局所接続する。
-   *  - 1対複数／複数対1は完全に分岐・合流する。
-   *  - それ以外は、上下順を保つ双方向の最近傍接続のみを作る。
-   *  - 中央で距離が同じ場合だけ2本に分かれ、人数差のある列を自然に接続する。
-   *  - 全組合せ接続、列を飛び越す接続、X字の交差は作らない。
+   * 鏡式自動接続：公開マップに見られる扇状分岐・持続レーン・菱形再合流を組み立てる。
+   *  - 隣接列だけを結び、各マスの入口・出口を必ず確保する。
+   *  - 人数が増減する列では、同距離の上下レーンを両方採用して局所的に枝を開閉する。
+   *  - 人数が同じでも、直前または直後が分岐・合流なら1本だけ隣接レーンへ斜行させる。
+   *    これにより分岐直後の選択肢を持続させ、菱形の再合流を作る。
+   *  - 全組合せ接続、二列以上の飛び越し、順序逆転によるX字交差は作らない。
    */
   autoConnect(map) {
     map.edges = [];
@@ -798,22 +799,38 @@ const mapOps = {
         }
       };
 
+      // 単一レーンからは、上・中・下の選択肢を扇状にすべて開く。
       if (cur.length === 1) {
         nxt.forEach((_, toIndex) => add(0, toIndex));
         continue;
       }
+      // 終端側の単一レーンへは、開いている枝をすべて収束させる。
       if (nxt.length === 1) {
         cur.forEach((_, fromIndex) => add(fromIndex, 0));
         continue;
       }
 
-      // 出発側・到着側の両方から最近傍を採用し、全マスの出口・入口を保証する。
+      // 出発側・到着側の両方から最近傍を採用する。等距離の中間レーンは両方へ結び、
+      // 2→3 / 3→2 の扇状分岐・菱形再合流を自然に作る。
       cur.forEach((_, fromIndex) => {
         nearest(pos(fromIndex, cur.length), nxt).forEach(toIndex => add(fromIndex, toIndex));
       });
       nxt.forEach((_, toIndex) => {
         nearest(pos(toIndex, nxt.length), cur).forEach(fromIndex => add(fromIndex, toIndex));
       });
+
+      // 分岐または合流の隣にある同数列では、1本だけ隣接レーンへ斜行させる。
+      // 直通だけの平行線にせず、選択経路を最低1列ぶん維持する菱形を作る。
+      const previousCount = s > 0 ? cols[s - 1].length : cur.length;
+      const followingCount = s + 2 < cols.length ? cols[s + 2].length : nxt.length;
+      const hasBranchContext = previousCount !== cur.length || followingCount !== nxt.length;
+      if (cur.length === nxt.length && cur.length >= 2 && hasBranchContext) {
+        const down = s % 2 === 0;
+        const fromIndex = down
+          ? s % (cur.length - 1)
+          : 1 + (s % (cur.length - 1));
+        add(fromIndex, fromIndex + (down ? 1 : -1));
+      }
     }
   },
   /* 接続候補: 隣接列のノードで、まだ接続していないもの */
@@ -2020,7 +2037,7 @@ function Toolbar({
                 onClick={() => mutate(d => mapOps.addColumn(d, (Math.max(0, ...d.nodes.map(n => n.stage))) + 1))}
                 title="末尾に列を追加（視点は動かしません）">列 ＋</button>
         <button className="tb-btn" onClick={onAutoConnect}
-                title="隣接列を局所分岐・合流で自動接続">自動接続</button>
+                title="扇状分岐・持続レーン・菱形再合流で自動接続">自動接続</button>
         <button className="tb-btn" onClick={onFit} title="全体表示">全体</button>
       </div>
 
@@ -2249,7 +2266,7 @@ function App() {
 
   const onAutoConnect = () => {
     mutate(d => mapOps.autoConnect(d));
-    notify("局所分岐・合流で接続を自動生成しました");
+    notify("鏡式の分岐・持続・再合流で接続を自動生成しました");
   };
 
   const onFit = () => {
