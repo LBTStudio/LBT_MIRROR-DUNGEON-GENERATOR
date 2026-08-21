@@ -396,6 +396,12 @@ const STORAGE_KEY = "kagami-map-studio.v3";
 const HISTORY_LIMIT = 60;
 const MAX_COLUMNS = 12;
 const MAX_NODES_PER_COLUMN = 4;
+const {
+  createBackground,
+  normalizeBackground,
+  resetBackgroundTransform,
+  prepareBackgroundImage,
+} = window.KagamiBackgroundUtils;
 
 function uuid() {
   return (globalThis.crypto?.randomUUID?.() ?? `n_${Date.now()}_${Math.random().toString(36).slice(2,7)}`);
@@ -450,6 +456,7 @@ function baseMap() {
     title: "移動ツリー",
     nodes,
     edges,
+    background: createBackground(),
     theme: {
       background: THEME.bg,
       panel: THEME.panel,
@@ -496,6 +503,7 @@ function normalizeMap(input) {
     title: String(input.title ?? "移動ツリー").slice(0, 40) || "移動ツリー",
     nodes,
     edges,
+    background: normalizeBackground(input.background),
     theme: {
       background: String(input.theme?.background ?? THEME.bg),
       panel: String(input.theme?.panel ?? THEME.panel),
@@ -961,7 +969,7 @@ function NodeMarker({ node, pos, selected, isPulse, iconSize, showLabel, theme, 
 const MapCanvas = React.memo(function MapCanvas({
   map, selectedId, setSelectedId,
   mutate, edgeMode, setEdgeMode,
-  showLabels, selectedKind,
+  showLabels, selectedKind, backgroundAdjusting,
 }) {
   const wrapRef  = React.useRef(null);
   const svgRef   = React.useRef(null);
@@ -978,6 +986,12 @@ const MapCanvas = React.memo(function MapCanvas({
   const layout = React.useMemo(() => computeLayout(map), [map.nodes, map.edges]);
   const theme = CSS_THEME;
   const didInitFit = React.useRef(false);
+  const backgroundDragRef = React.useRef(null);
+  const [backgroundDragOffset, setBackgroundDragOffset] = React.useState(null);
+  const background = map.background;
+  const renderedBackground = backgroundDragOffset
+    ? { ...background, x: background.x + backgroundDragOffset.x, y: background.y + backgroundDragOffset.y }
+    : background;
 
   const applyView = React.useCallback(() => {
     const view = viewRef.current;
@@ -1044,6 +1058,38 @@ const MapCanvas = React.memo(function MapCanvas({
   const activePointersRef = React.useRef(new Map());
   const pinchRef = React.useRef(null);
   const spaceHeldRef = React.useRef(false);
+  const canAdjustBackground = (target) => {
+    if (!backgroundAdjusting || !background?.enabled) return false;
+    return !target.closest?.(".nd, .edge, .add-node, .col-inserter, .linkhandle, .canvas-controls, .mini-map");
+  };
+  const beginBackgroundDrag = (e) => {
+    backgroundDragRef.current = { id: e.pointerId, clientX: e.clientX, clientY: e.clientY, zoom: viewRef.current.zoom };
+    setBackgroundDragOffset({ x: 0, y: 0 });
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+  };
+  const moveBackgroundDrag = (e) => {
+    const drag = backgroundDragRef.current;
+    if (!drag || drag.id !== e.pointerId) return false;
+    setBackgroundDragOffset({
+      x: (e.clientX - drag.clientX) / Math.max(0.01, drag.zoom),
+      y: (e.clientY - drag.clientY) / Math.max(0.01, drag.zoom),
+    });
+    return true;
+  };
+  const commitBackgroundDrag = (e) => {
+    const drag = backgroundDragRef.current;
+    if (!drag || drag.id !== e.pointerId) return false;
+    const x = (e.clientX - drag.clientX) / Math.max(0.01, drag.zoom);
+    const y = (e.clientY - drag.clientY) / Math.max(0.01, drag.zoom);
+    if (Math.hypot(x, y) > 0.5) {
+      mutate(draft => {
+        draft.background = normalizeBackground({ ...draft.background, x: draft.background.x + x, y: draft.background.y + y });
+      });
+    }
+    backgroundDragRef.current = null;
+    setBackgroundDragOffset(null);
+    return true;
+  };
   React.useEffect(() => {
     const onKey = (e) => {
       if (e.code === "Space" && !e.repeat && document.activeElement?.tagName !== "INPUT") {
@@ -1060,6 +1106,10 @@ const MapCanvas = React.memo(function MapCanvas({
   }, []);
 
   const onWrapPointerDown = (e) => {
+    if (canAdjustBackground(e.target) && (e.pointerType !== "mouse" || e.button === 0)) {
+      beginBackgroundDrag(e);
+      return;
+    }
     if (e.pointerType === "touch") {
       activePointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
       e.currentTarget.setPointerCapture?.(e.pointerId);
@@ -1091,6 +1141,7 @@ const MapCanvas = React.memo(function MapCanvas({
     }
   };
   const onWrapPointerMove = (e) => {
+    if (moveBackgroundDrag(e)) return;
     if (e.pointerType === "touch") {
       if (activePointersRef.current.has(e.pointerId)) activePointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (pinchRef.current && activePointersRef.current.size >= 2) {
@@ -1129,6 +1180,7 @@ const MapCanvas = React.memo(function MapCanvas({
     }
   };
   const onWrapPointerUp = (e) => {
+    if (commitBackgroundDrag(e)) return;
     if (e.pointerType === "touch") {
       const gesture = panGestureRef.current?.id === e.pointerId ? panGestureRef.current : null;
       activePointersRef.current.delete(e.pointerId);
@@ -1263,6 +1315,19 @@ const MapCanvas = React.memo(function MapCanvas({
         <svg ref={svgRef} width={layout.width} height={layout.height} viewBox={`0 0 ${layout.width} ${layout.height}`}
              xmlns="http://www.w3.org/2000/svg" className="route-svg">
           <rect data-role="canvas-bg" width={layout.width} height={layout.height} fill={theme.background} rx="14" />
+          {renderedBackground?.enabled && renderedBackground.dataUrl && (
+            <image
+              data-role="background-image"
+              href={renderedBackground.dataUrl}
+              x={layout.width / 2 + renderedBackground.x - (renderedBackground.width * renderedBackground.scale) / 2}
+              y={layout.height / 2 + renderedBackground.y - (renderedBackground.height * renderedBackground.scale) / 2}
+              width={renderedBackground.width * renderedBackground.scale}
+              height={renderedBackground.height * renderedBackground.scale}
+              opacity={renderedBackground.opacity}
+              preserveAspectRatio="none"
+              pointerEvents="none"
+            />
+          )}
           <defs>
             <linearGradient id="colgrad" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor={theme.brass} stopOpacity="0" />
@@ -1511,6 +1576,11 @@ const MapCanvas = React.memo(function MapCanvas({
         <button onClick={() => changeZoom(0.12)} title="拡大">＋</button>
         <span ref={zoomReadoutRef} className="zoom-readout">100%</span>
       </div>
+      {backgroundAdjusting && background?.enabled && (
+        <div className="background-adjust-indicator" aria-live="polite">
+          背景調整中：空白をドラッグして位置を変更
+        </div>
+      )}
       <div className="center-crosshair" aria-hidden="true">
         <span/><span/>
       </div>
@@ -1519,9 +1589,10 @@ const MapCanvas = React.memo(function MapCanvas({
   );
 }, (prev, next) => (
   prev.map.nodes === next.map.nodes && prev.map.edges === next.map.edges &&
+  prev.map.background === next.map.background &&
   prev.map.theme.iconSize === next.map.theme.iconSize && prev.map.theme.showLabels === next.map.theme.showLabels &&
   prev.selectedId === next.selectedId && prev.showLabels === next.showLabels &&
-  prev.selectedKind === next.selectedKind &&
+  prev.selectedKind === next.selectedKind && prev.backgroundAdjusting === next.backgroundAdjusting &&
   prev.mutate === next.mutate && prev.setSelectedId === next.setSelectedId
 ));
 
@@ -1874,12 +1945,16 @@ function Toolbar({
   onReset, onFit, onAutoConnect,
   notify, showLabels, setShowLabels,
   showThumb, setShowThumb,
-  activeTheme, onThemeCommit, selectedKind, setSelectedId
+  activeTheme, onThemeCommit, selectedKind, setSelectedId,
+  backgroundAdjusting, setBackgroundAdjusting,
 }) {
   const fileRef = React.useRef(null);
+  const backgroundFileRef = React.useRef(null);
   const [showTheme, setShowTheme] = React.useState(false);
+  const [showBackground, setShowBackground] = React.useState(false);
   const [showExport, setShowExport] = React.useState(false);
   const themeRef = React.useRef(null);
+  const backgroundRef = React.useRef(null);
   const exportRef = React.useRef(null);
   const previewThemeRef = React.useRef(activeTheme);
   const themeCommitTimer = React.useRef(null);
@@ -1929,6 +2004,7 @@ function Toolbar({
   React.useEffect(() => {
     const onDown = (e) => {
       if (themeRef.current && !themeRef.current.contains(e.target)) setShowTheme(false);
+      if (backgroundRef.current && !backgroundRef.current.contains(e.target)) setShowBackground(false);
       if (exportRef.current && !exportRef.current.contains(e.target)) setShowExport(false);
     };
     document.addEventListener("mousedown", onDown);
@@ -1948,6 +2024,28 @@ function Toolbar({
     };
     reader.readAsText(file);
   };
+
+  const updateBackground = (patch) => {
+    mutate(draft => { draft.background = normalizeBackground({ ...draft.background, ...patch }); });
+  };
+
+  const handleBackgroundImage = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const background = await prepareBackgroundImage(file);
+      mutate(draft => { draft.background = background; });
+      setBackgroundAdjusting(true);
+      notify(`背景画像を読み込みました：${background.name}`);
+    } catch (error) {
+      notify(error instanceof Error ? error.message : "背景画像を読み込めませんでした");
+    } finally {
+      if (backgroundFileRef.current) backgroundFileRef.current.value = "";
+    }
+  };
+
+  const background = map.background;
+  const hasBackground = Boolean(background?.dataUrl);
 
   return (
     <div className="toolbar">
@@ -2052,6 +2150,47 @@ function Toolbar({
       </div>
 
       <div className="tb-group">
+        <div ref={backgroundRef} style={{ position: "relative" }}>
+          <button className={`tb-btn ${backgroundAdjusting ? "is-active" : ""}`} onClick={() => setShowBackground(v => !v)}
+                  title="背景画像の読込と調整">背景{hasBackground ? " ●" : ""}</button>
+          {showBackground && (
+            <div className="tb-popover background-popover">
+              <label className="i-label">マップ背景</label>
+              <p className="background-status">{hasBackground ? `${background.name}（${background.width}×${background.height}）` : "PNG・JPEG・WebPをこの端末内だけで読み込みます"}</p>
+              <button className="btn primary background-upload-btn" onClick={() => backgroundFileRef.current?.click()}>
+                {hasBackground ? "画像を差し替え" : "画像を選択"}
+              </button>
+              <input ref={backgroundFileRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={handleBackgroundImage} style={{ display: "none" }} />
+              {hasBackground && (
+                <>
+                  <label className="i-check">
+                    <input type="checkbox" checked={background.enabled}
+                           onChange={e => { updateBackground({ enabled: e.target.checked }); if (!e.target.checked) setBackgroundAdjusting(false); }} />
+                    背景画像を表示
+                  </label>
+                  <button className={`btn background-adjust-btn ${backgroundAdjusting ? "is-active" : ""}`}
+                          onClick={() => { setBackgroundAdjusting(value => !value); setShowBackground(false); }}>
+                    {backgroundAdjusting ? "位置調整を完了" : "位置をドラッグで調整"}
+                  </button>
+                  <label className="i-label">拡大率 {Math.round(background.scale * 100)}%</label>
+                  <input className="background-range" type="range" min="0.25" max="4" step="0.01" value={background.scale}
+                         onChange={e => updateBackground({ scale: Number(e.target.value) })} />
+                  <label className="i-label">不透明度 {Math.round(background.opacity * 100)}%</label>
+                  <input className="background-range" type="range" min="0.08" max="1" step="0.01" value={background.opacity}
+                         onChange={e => updateBackground({ opacity: Number(e.target.value) })} />
+                  <div className="background-actions">
+                    <button className="btn" onClick={() => mutate(draft => { draft.background = resetBackgroundTransform(draft.background); })}>調整を初期化</button>
+                    <button className="btn danger" onClick={() => { mutate(draft => { draft.background = createBackground(); }); setBackgroundAdjusting(false); }}>画像を削除</button>
+                  </div>
+                  <p className="background-hint">調整中は空白をドラッグして背景だけを移動します。マスや結線の操作は維持されます。</p>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="tb-group">
         <div ref={exportRef} style={{ position: "relative" }}>
           <button className="tb-btn tb-btn-primary" onClick={() => {
             commitPreviewTheme();
@@ -2096,6 +2235,7 @@ function App() {
   const [notice, setNotice] = React.useState("");
   const [showThumb, setShowThumb] = React.useState(true);
   const [showLabels, setShowLabels] = React.useState(true);
+  const [backgroundAdjusting, setBackgroundAdjusting] = React.useState(false);
   const [themeResetKey, setThemeResetKey] = React.useState(0);
   
   const [exportModal, setExportModal] = React.useState(null);
@@ -2104,6 +2244,10 @@ function App() {
   const commitTheme = React.useCallback((theme) => {
     replaceTheme(theme);
   }, [replaceTheme]);
+
+  React.useEffect(() => {
+    if (!map.background?.enabled) setBackgroundAdjusting(false);
+  }, [map.background?.enabled]);
 
   const notify = React.useCallback((text) => {
     setNotice(text);
@@ -2238,6 +2382,7 @@ function App() {
     }
     replace(fresh);
     setSelectedId(null);
+    setBackgroundAdjusting(false);
     setThemeResetKey(key => key + 1);
     notify("マップとマップ配色を初期状態へ戻しました");
   };
@@ -2264,12 +2409,14 @@ function App() {
         showThumb={showThumb} setShowThumb={setShowThumb}
         activeTheme={activeTheme} onThemeCommit={commitTheme}
         selectedKind={selectedKind} setSelectedId={setSelectedId}
+        backgroundAdjusting={backgroundAdjusting} setBackgroundAdjusting={setBackgroundAdjusting}
       />
       <MapCanvas
         map={map} selectedId={selectedId} setSelectedId={setSelectedId}
         mutate={mutate}
         showLabels={showLabels}
         selectedKind={selectedKind}
+        backgroundAdjusting={backgroundAdjusting}
       />
       <Palette selectedKind={selectedKind} setSelectedKind={setSelectedKind} mutate={mutate}
                mobileSheet={mobileSheet} setMobileSheet={setMobileSheet} selectedId={selectedId} />

@@ -136,6 +136,16 @@
       background: linear-gradient(180deg, rgba(212,162,75,.35), rgba(212,162,75,.15));
       color: #fff5df;
     }
+    .tb-btn.is-active, .background-adjust-btn.is-active {
+      border-color: var(--brass); color: var(--brass-hi);
+      background: rgba(212,162,75,.16);
+      box-shadow: 0 0 0 1px rgba(212,162,75,.22);
+    }
+    .tb-btn.is-active, .background-adjust-btn.is-active {
+      border-color: var(--brass); color: var(--brass-hi);
+      background: rgba(212,162,75,.16);
+      box-shadow: 0 0 0 1px rgba(212,162,75,.22);
+    }
     .tb-btn-danger:hover:not(:disabled) {
       border-color: var(--blood);
       color: var(--blood-hi);
@@ -178,6 +188,22 @@
     .tb-swatches .sw.on { border-color: var(--ink); }
     .i-check { display: flex; align-items: center; gap: 6px; font-size: 12px; margin-top: 8px; color: var(--ink-dim); }
     .i-check input { accent-color: var(--brass); }
+    .background-popover { width: 296px; }
+    .background-status { margin: 0 0 9px; color: var(--ink-dim); font-size: 11px; line-height: 1.55; overflow-wrap: anywhere; }
+    .background-upload-btn { width: 100%; min-height: 36px; }
+    .background-adjust-btn { width: 100%; margin-top: 9px; }
+    .background-range { width: 100%; accent-color: var(--brass); cursor: pointer; }
+    .background-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px; }
+    .background-actions .btn { padding-inline: 7px; }
+    .background-hint { margin: 9px 0 0; padding-top: 8px; border-top: 1px dashed var(--edge); color: var(--ink-dim); font-size: 11px; line-height: 1.55; }
+    .background-popover { width: 296px; }
+    .background-status { margin: 0 0 9px; color: var(--ink-dim); font-size: 11px; line-height: 1.55; overflow-wrap: anywhere; }
+    .background-upload-btn { width: 100%; min-height: 36px; }
+    .background-adjust-btn { width: 100%; margin-top: 9px; }
+    .background-range { width: 100%; accent-color: var(--brass); cursor: pointer; }
+    .background-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px; }
+    .background-actions .btn { padding-inline: 7px; }
+    .background-hint { margin: 9px 0 0; padding-top: 8px; border-top: 1px dashed var(--edge); color: var(--ink-dim); font-size: 11px; line-height: 1.55; }
 
     
     .canvas-wrap {
@@ -224,6 +250,20 @@
     }
     .canvas-controls button:hover { background: var(--panel-2); border-color: var(--brass); color: var(--brass-hi); }
     .zoom-readout { font-family: "JetBrains Mono", monospace; font-size: 11px; color: var(--brass); padding: 0 6px; min-width: 44px; text-align: right; }
+    .background-adjust-indicator {
+      position: absolute; left: 50%; top: 16px; transform: translateX(-50%);
+      z-index: 16; pointer-events: none;
+      padding: 7px 12px; border-radius: 20px;
+      background: rgba(22,19,24,.92); border: 1px solid var(--brass);
+      color: var(--brass-hi); font-size: 12px; box-shadow: var(--shadow-l);
+    }
+    .background-adjust-indicator {
+      position: absolute; left: 50%; top: 16px; transform: translateX(-50%);
+      z-index: 16; pointer-events: none;
+      padding: 7px 12px; border-radius: 20px;
+      background: rgba(22,19,24,.92); border: 1px solid var(--brass);
+      color: var(--brass-hi); font-size: 12px; box-shadow: var(--shadow-l);
+    }
 
     .mini-map {
       position: absolute; left: 16px; bottom: 16px;
@@ -589,6 +629,8 @@
       .canvas-controls { top: 8px; right: 8px; padding: 4px; gap: 2px; }
       .canvas-controls button { width: 36px; height: 36px; }
       .zoom-readout { min-width: 38px; padding: 0 4px; }
+      .background-adjust-indicator { top: 58px; max-width: calc(100% - 16px); text-align: center; font-size: 11px; }
+      .background-adjust-indicator { top: 58px; max-width: calc(100% - 16px); text-align: center; font-size: 11px; }
       .fp.is-mobile {
         position: absolute !important;
         left: 8px !important;
@@ -633,6 +675,7 @@
 </head>
 <body>
   <div id="root"></div>
-  <script type="text/babel" data-presets="react" src="combined.jsx?rev=27ce8de"></script>
+  <script src="background-image-utils.js?rev=background-v1"></script>
+  <script type="text/babel" data-presets="react" src="combined.jsx?rev=background-v1"></script>
 </body>
 </html>
