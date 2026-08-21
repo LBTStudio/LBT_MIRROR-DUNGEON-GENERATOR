@@ -61,6 +61,20 @@
     };
   }
 
+  function fitBackgroundToMap(input, mapWidth, mapHeight, options = {}) {
+    const background = normalizeBackground(input);
+    const width = Number(mapWidth);
+    const height = Number(mapHeight);
+    if (!background.enabled || !Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return background;
+    const requestedPadding = Number(options.padding);
+    const maximumPadding = Math.max(0, Math.min(width, height) / 2 - 1);
+    const padding = Number.isFinite(requestedPadding) ? Math.min(maximumPadding, Math.max(0, requestedPadding)) : 0;
+    const availableWidth = Math.max(1, width - padding * 2);
+    const availableHeight = Math.max(1, height - padding * 2);
+    const scale = clamp(Math.min(availableWidth / background.width, availableHeight / background.height), MIN_SCALE, MAX_SCALE, MIN_SCALE);
+    return normalizeBackground({ ...background, x: 0, y: 0, scale, scaleX: scale, scaleY: scale });
+  }
+
   function resetBackgroundTransform(background) {
     return { ...normalizeBackground(background), x: 0, y: 0, scale: 1, scaleX: 1, scaleY: 1, opacity: 0.38 };
   }
@@ -130,6 +144,7 @@
     MAX_IMAGE_SIDE,
     createBackground,
     normalizeBackground,
+    fitBackgroundToMap,
     resetBackgroundTransform,
     prepareBackgroundImage,
   });

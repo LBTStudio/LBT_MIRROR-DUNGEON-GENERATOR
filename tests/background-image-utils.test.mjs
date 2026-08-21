@@ -62,6 +62,16 @@ test("背景変形の初期化は画像を残して位置・倍率・不透明�
   assert.equal(reset.opacity, 0.38);
 });
 
+test("背景初期フィットはマップの余白内へ画像全体を中央配置する", () => {
+  const fitted = utils.fitBackgroundToMap({ enabled: true, dataUrl, width: 1600, height: 900, x: 400, y: -180, scale: 1.8 }, 1000, 600, { padding: 30 });
+  assert.equal(fitted.x, 0);
+  assert.equal(fitted.y, 0);
+  assert.equal(fitted.scale, fitted.scaleX);
+  assert.equal(fitted.scale, fitted.scaleY);
+  assert.ok(fitted.width * fitted.scaleX <= 940);
+  assert.ok(fitted.height * fitted.scaleY <= 540);
+});
+
 test("非対応形式の画像は変換前に拒否される", async () => {
   await assert.rejects(
     () => utils.prepareBackgroundImage({ type: "image/bmp", size: 100 }),

@@ -1,0 +1,29 @@
+{
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "frame": {
+    "x": 36,
+    "y": 395,
+    "width": 317,
+    "height": 190
+  },
+  "canvas": {
+    "x": 18,
+    "y": 396,
+    "width": 354,
+    "height": 186
+  },
+  "horizontalOverflow": false,
+  "animations": [
+    "origin:icon-idle-origin",
+    "skirmish:icon-idle-skirmish",
+    "event:icon-idle-event",
+    "focused:icon-idle-focused",
+    "elite:icon-idle-elite",
+    "abnormality:icon-idle-abnormality",
+    "supply:icon-idle-supply",
+    "boss:icon-idle-boss"
+  ]
+}

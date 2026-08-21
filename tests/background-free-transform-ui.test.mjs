@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 const source = readFileSync(new URL("../site/combined.jsx", import.meta.url), "utf8");
+const markup = readFileSync(new URL("../site/index.html", import.meta.url), "utf8");
 
 test("背景調整モードは枠内移動と角・辺の自由変形ハンドルを持つ", () => {
   assert.match(source, /data-role="background-transform-frame"/);
@@ -29,4 +30,20 @@ test("低FPSアイコンモードとGIF・APNG保存入口を持つ", () => {
   assert.match(source, /onExportApng/);
   assert.match(source, /encodeGif\(/);
   assert.match(source, /encodeApng\(/);
+});
+
+test("低FPSアイコンモードは種別別モーションを画面とGIF・APNG出力で共有する", () => {
+  assert.match(source, /const ICON_IDLE_MOTIONS/);
+  assert.match(source, /function getIconIdleMotion/);
+  assert.match(source, /icon-idle icon-idle-\$\{node\.kind\}/);
+  assert.match(source, /data-kind=\{node\.kind\}/);
+  assert.match(source, /getIconIdleMotion\(kind, iconFrame\)/);
+  assert.match(markup, /icon-idle-skirmish/);
+  assert.match(markup, /icon-idle-boss/);
+  assert.match(markup, /prefers-reduced-motion: reduce/);
+});
+
+test("背景画像のアップロード直後はマップ領域へ収める倍率と中央配置を使う", () => {
+  assert.match(source, /fitBackgroundToMap\(preparedBackground, layout\.width, layout\.height, \{ padding: 36 \}\)/);
+  assert.match(source, /背景画像をマップ内に収めて配置しました/);
 });

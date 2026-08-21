@@ -344,6 +344,22 @@ const KINDS = [
 
 const KIND_INDEX = Object.fromEntries(KINDS.map(k => [k.id, k]));
 
+const ICON_IDLE_MOTIONS = Object.freeze({
+  origin:      Object.freeze([{ x: 0, y: 0, rotation: 0 }, { x: 0, y: -1.1, rotation: 0 }, { x: 0, y: 0.35, rotation: 0 }]),
+  skirmish:    Object.freeze([{ x: 0, y: 0, rotation: 0 }, { x: 1.35, y: -1.0, rotation: 1.6 }, { x: -0.7, y: 0.4, rotation: -0.9 }]),
+  focused:     Object.freeze([{ x: 0, y: 0, rotation: 0 }, { x: -0.8, y: -0.55, rotation: -1.2 }, { x: 0.8, y: 0.35, rotation: 1.2 }]),
+  elite:       Object.freeze([{ x: 0, y: 0, rotation: 0 }, { x: 0, y: -0.75, rotation: 0 }, { x: 0, y: 0.45, rotation: 0 }]),
+  abnormality: Object.freeze([{ x: 0, y: 0, rotation: 0 }, { x: -0.7, y: -0.6, rotation: -0.6 }, { x: 0.7, y: 0.45, rotation: 0.6 }]),
+  event:       Object.freeze([{ x: 0, y: 0, rotation: 0 }, { x: 0, y: -1.8, rotation: -0.8 }, { x: 0, y: 0.6, rotation: 0.7 }]),
+  supply:      Object.freeze([{ x: 0, y: 0, rotation: 0 }, { x: 0, y: -0.85, rotation: 0 }, { x: 0, y: 0.25, rotation: 0 }]),
+  boss:        Object.freeze([{ x: 0, y: 0, rotation: 0 }, { x: 0, y: -1.0, rotation: 0 }, { x: 0, y: 0.45, rotation: 0 }]),
+});
+
+function getIconIdleMotion(kind, frame = 0) {
+  const phases = ICON_IDLE_MOTIONS[kind] ?? ICON_IDLE_MOTIONS.skirmish;
+  return phases[Math.abs(Number(frame) || 0) % phases.length];
+}
+
 const THEME = {
   bg:      "#0b0a0d",   
   panel:   "#161318",   
@@ -366,7 +382,7 @@ const CSS_THEME = Object.freeze({
   ink: "var(--map-ink)", inkDim: "var(--map-ink-dim)", brass: "var(--map-brass)", brassHi: "var(--map-brass-hi)",
   blood: "var(--map-blood)", bloodHi: "var(--map-blood-hi)", warn: "var(--map-warn)", line: "var(--map-line)", lineHi: "var(--map-line-hi)",
 });
-const BACKGROUND_MIN_SCALE = 0.25;
+const BACKGROUND_MIN_SCALE = 0.05;
 const BACKGROUND_MAX_SCALE = 4;
 const BACKGROUND_MIN_FRAME_SIZE = 24;
 
@@ -402,6 +418,7 @@ const MAX_NODES_PER_COLUMN = 4;
 const {
   createBackground,
   normalizeBackground,
+  fitBackgroundToMap,
   resetBackgroundTransform,
   prepareBackgroundImage,
 } = window.KagamiBackgroundUtils;
@@ -897,7 +914,7 @@ function NodeMarker({ node, pos, selected, isPulse, iconSize, showLabel, iconAni
   const ringGlow = tone === "blood" ? theme.bloodHi : theme.brass;
 
   return (
-    <g transform={`translate(${pos.x} ${pos.y})`} className={`nd ${selected ? "sel" : ""} ${isPulse ? "pulse" : ""}`}>
+    <g transform={`translate(${pos.x} ${pos.y})`} className={`nd ${selected ? "sel" : ""} ${isPulse ? "pulse" : ""}`} data-kind={node.kind}>
       
       {selected && (
         <circle r={NODE_W/2 + 6} fill="none" stroke={theme.brass} strokeWidth="2" strokeDasharray="3 4">
@@ -921,7 +938,7 @@ function NodeMarker({ node, pos, selected, isPulse, iconSize, showLabel, iconAni
       </g>
       
       <foreignObject x={-iconSize/2} y={-iconSize/2} width={iconSize} height={iconSize} style={{ pointerEvents: "none" }}>
-        <div xmlns="http://www.w3.org/1999/xhtml" data-role="map-icon" className={iconAnimation ? "icon-idle" : ""} style={{ width: "100%", height: "100%" }}>
+        <div xmlns="http://www.w3.org/1999/xhtml" data-role="map-icon" className={iconAnimation ? `icon-idle icon-idle-${node.kind}` : ""} style={{ width: "100%", height: "100%" }}>
           <Icon ink={theme.ink} dark={theme.background} midGray={theme.panelHi}
                 accent={tone === "blood" ? theme.bloodHi : theme.brass} warn={theme.warn} />
         </div>
@@ -2192,10 +2209,12 @@ function Toolbar({
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const background = await prepareBackgroundImage(file);
+      const preparedBackground = await prepareBackgroundImage(file);
+      const layout = computeLayout(map);
+      const background = fitBackgroundToMap(preparedBackground, layout.width, layout.height, { padding: 36 });
       mutate(draft => { draft.background = background; });
       setBackgroundAdjusting(true);
-      notify(`背景画像を読み込みました：${background.name}`);
+      notify(`背景画像をマップ内に収めて配置しました：${background.name}`);
     } catch (error) {
       notify(error instanceof Error ? error.message : "背景画像を読み込めませんでした");
     } finally {
@@ -2337,7 +2356,7 @@ function Toolbar({
                     {backgroundAdjusting ? "枠の調整を完了" : "枠をドラッグで自由変形"}
                   </button>
                   <label className="i-label">均等倍率 {Math.round(background.scale * 100)}%</label>
-                  <input className="background-range" type="range" min="0.25" max="4" step="0.01" value={background.scale}
+                  <input className="background-range" type="range" min={BACKGROUND_MIN_SCALE} max="4" step="0.01" value={background.scale}
                          onChange={e => updateUniformBackgroundScale(e.target.value)} />
                   <label className="i-label">不透明度 {Math.round(background.opacity * 100)}%</label>
                   <input className="background-range" type="range" min="0.08" max="1" step="0.01" value={background.opacity}
@@ -2481,9 +2500,9 @@ function App() {
         const icon = sourceIcon.cloneNode(true);
         ["x", "y", "width", "height"].forEach(name => icon.setAttribute(name, fo.getAttribute(name) ?? "0"));
         if (iconFrame !== null && activeMap.theme.iconAnimation) {
-          const phases = [[0, 0], [-2, -1.2], [1, 0.8]];
-          const [offsetY, rotation] = phases[iconFrame % phases.length];
-          icon.setAttribute("transform", `translate(0 ${offsetY}) rotate(${rotation} 50 50)`);
+          const kind = fo.closest(".nd")?.getAttribute("data-kind") ?? "skirmish";
+          const motion = getIconIdleMotion(kind, iconFrame);
+          icon.setAttribute("transform", `translate(${motion.x} ${motion.y}) rotate(${motion.rotation} 50 50)`);
         }
         icon.setAttribute("overflow", "visible");
         fo.replaceWith(icon);
