@@ -31,6 +31,32 @@ const chunkTypes = async blob => {
   return types;
 };
 
+const gifFrameDelays = async blob => {
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  const delays = [];
+  for (let index = 0; index + 5 < bytes.length; index += 1) {
+    if (bytes[index] === 0x21 && bytes[index + 1] === 0xf9 && bytes[index + 2] === 0x04) delays.push((bytes[index + 4] | (bytes[index + 5] << 8)) * 10);
+  }
+  return delays;
+};
+
+const apngFrameDelays = async blob => {
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  const delays = [];
+  for (let offset = 8; offset + 12 <= bytes.length;) {
+    const length = (bytes[offset] << 24) | (bytes[offset + 1] << 16) | (bytes[offset + 2] << 8) | bytes[offset + 3];
+    const type = new TextDecoder().decode(bytes.slice(offset + 4, offset + 8));
+    if (type === "fcTL") {
+      const data = offset + 8;
+      const numerator = (bytes[data + 20] << 8) | bytes[data + 21];
+      const denominator = (bytes[data + 22] << 8) | bytes[data + 23];
+      delays.push(Math.round(numerator * 1000 / denominator));
+    }
+    offset += 12 + length;
+  }
+  return delays;
+};
+
 const extractFirstGifLzw = bytes => {
   const hasGlobalPalette = (bytes[10] & 0x80) !== 0;
   let offset = 13 + (hasGlobalPalette ? 3 * (1 << ((bytes[10] & 7) + 1)) : 0);
@@ -132,6 +158,16 @@ test("GIFのフレーム遅延はGIF89aの1/100秒単位でFPS段階を保存す
   }
 });
 
+test("GIFはフレームごとの遅延を保持して0.75秒のサイクルを正確に保存する", async () => {
+  const frame = new Uint8Array([255, 0, 0, 255]);
+  const blob = api.encodeGif(Array.from({ length: 9 }, () => frame), {
+    width: 1, height: 1, frameDelaysMs: [80, 90, 80, 80, 90, 80, 80, 90, 80],
+  });
+  const delays = await gifFrameDelays(blob);
+  assert.deepEqual(delays, [80, 90, 80, 80, 90, 80, 80, 90, 80]);
+  assert.equal(delays.reduce((sum, delay) => sum + delay, 0), 750);
+});
+
 test("APNGはacTL・fcTL・fdATチャンクを持つ複数フレームPNGとして出力する", async () => {
   const blob = await api.encodeApng([onePixelPng([255, 0, 0, 255]), onePixelPng([0, 0, 255, 255])], { delayMs: 250 });
   const types = await chunkTypes(blob);
@@ -139,4 +175,12 @@ test("APNGはacTL・fcTL・fdATチャンクを持つ複数フレームPNGとし�
   assert.deepEqual(types.slice(0, 3), ["IHDR", "acTL", "fcTL"]);
   assert.ok(types.includes("fdAT"));
   assert.equal(types.at(-1), "IEND");
+});
+
+test("APNGはフレームごとの遅延を保持して0.75秒のサイクルを正確に保存する", async () => {
+  const frames = Array.from({ length: 6 }, () => onePixelPng([255, 0, 0, 255]));
+  const blob = await api.encodeApng(frames, { frameDelaysMs: [130, 120, 130, 120, 130, 120] });
+  const delays = await apngFrameDelays(blob);
+  assert.deepEqual(delays, [130, 120, 130, 120, 130, 120]);
+  assert.equal(delays.reduce((sum, delay) => sum + delay, 0), 750);
 });

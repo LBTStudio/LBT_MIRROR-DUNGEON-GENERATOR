@@ -347,6 +347,13 @@ const getNodeDisplayLabel = (node) => {
   const custom = String(node?.label ?? "").trim();
   return custom || KIND_INDEX[node?.kind]?.label || KIND_INDEX.skirmish.label;
 };
+const ICON_IDLE_CYCLE_MS = 750;
+const ICON_IDLE_PHASE_COUNT = 3;
+const ICON_ANIMATION_OPTIONS = Object.freeze([
+  Object.freeze({ fps: 4, label: "低 (4fps)", hint: "見本と同じ3段階のテンポ", frameCount: 3 }),
+  Object.freeze({ fps: 8, label: "中 (8fps)", hint: "テンポは同じで中間姿勢を追加", frameCount: 6 }),
+  Object.freeze({ fps: 12, label: "高 (12fps)", hint: "テンポは同じで最もなめらか", frameCount: 9 }),
+]);
 
 const ICON_IDLE_MOTIONS = Object.freeze({
   origin:      Object.freeze([{ x: 0, y: 0, rotation: 0 }, { x: 0, y: -1.1, rotation: 0 }, { x: 0, y: 0.35, rotation: 0 }]),
@@ -362,6 +369,31 @@ const ICON_IDLE_MOTIONS = Object.freeze({
 function getIconIdleMotion(kind, frame = 0) {
   const phases = ICON_IDLE_MOTIONS[kind] ?? ICON_IDLE_MOTIONS.skirmish;
   return phases[Math.abs(Number(frame) || 0) % phases.length];
+}
+
+function getIconIdleMotionAt(kind, elapsedMs = 0) {
+  const phases = ICON_IDLE_MOTIONS[kind] ?? ICON_IDLE_MOTIONS.skirmish;
+  const cyclePosition = ((Number(elapsedMs) || 0) % ICON_IDLE_CYCLE_MS + ICON_IDLE_CYCLE_MS) % ICON_IDLE_CYCLE_MS;
+  const phasePosition = cyclePosition / ICON_IDLE_CYCLE_MS * phases.length;
+  const fromIndex = Math.floor(phasePosition) % phases.length;
+  const toIndex = (fromIndex + 1) % phases.length;
+  const blend = phasePosition - Math.floor(phasePosition);
+  const from = phases[fromIndex];
+  const to = phases[toIndex];
+  return {
+    x: from.x + (to.x - from.x) * blend,
+    y: from.y + (to.y - from.y) * blend,
+    rotation: from.rotation + (to.rotation - from.rotation) * blend,
+  };
+}
+
+function createIconAnimationFrameSchedule(frameCount = ICON_IDLE_PHASE_COUNT) {
+  const totalFrames = Math.max(ICON_IDLE_PHASE_COUNT, Math.round(Number(frameCount) || ICON_IDLE_PHASE_COUNT));
+  return Array.from({ length: totalFrames }, (_, index) => {
+    const startMs = Math.round(index * ICON_IDLE_CYCLE_MS / totalFrames / 10) * 10;
+    const endMs = Math.round((index + 1) * ICON_IDLE_CYCLE_MS / totalFrames / 10) * 10;
+    return { elapsedMs: startMs, delayMs: endMs - startMs };
+  });
 }
 
 const THEME = {
@@ -2043,11 +2075,6 @@ function ExportDialog({ open, format, theme, iconAnimation, onClose, onConfirm }
   const [bg, setBg] = React.useState("theme");
   const [scale, setScale] = React.useState(2);
   const [quality, setQuality] = React.useState(0.92);
-  const FPS_OPTIONS = [
-    { fps: 4, delayMs: 250, label: "低 (4fps)", hint: "どっとアニメ調" },
-    { fps: 8, delayMs: 125, label: "中 (8fps)", hint: "なめらか" },
-    { fps: 12, delayMs: 83, label: "高 (12fps)", hint: "最もなめらか" },
-  ];
   const [fpsIdx, setFpsIdx] = React.useState(0);
   const dialogRef = React.useRef(null);
   React.useEffect(() => {
@@ -2107,15 +2134,15 @@ function ExportDialog({ open, format, theme, iconAnimation, onClose, onConfirm }
               </p>
               {(format === "gif" || format === "apng") && iconAnimation && (
                 <>
-                  <label className="i-label">アニメーション速度</label>
+                  <label className="i-label">アニメーションのなめらかさ</label>
                   <div className="scale-choices">
-                    {FPS_OPTIONS.map((opt, index) => (
+                    {ICON_ANIMATION_OPTIONS.map((opt, index) => (
                       <button key={opt.fps} className={`scale-choice ${fpsIdx === index ? "on" : ""}`} onClick={() => setFpsIdx(index)}>
                         {opt.label}
                       </button>
                     ))}
                   </div>
-                  <p className="modal-hint">{FPS_OPTIONS[fpsIdx].hint} — GIF89a標準の1/100秒単位で設定</p>
+                  <p className="modal-hint">{ICON_ANIMATION_OPTIONS[fpsIdx].hint} — すべてマップ上の見本と同じ0.75秒で1周します</p>
                 </>
               )}
             </>
@@ -2135,7 +2162,7 @@ function ExportDialog({ open, format, theme, iconAnimation, onClose, onConfirm }
         </div>
         <div className="modal-foot">
           <button className="btn" onClick={onClose}>キャンセル</button>
-          <button className="btn primary" onClick={() => onConfirm({ bg, scale, quality, delayMs: FPS_OPTIONS[fpsIdx].delayMs })}>保存</button>
+          <button className="btn primary" onClick={() => onConfirm({ bg, scale, quality, animationOption: ICON_ANIMATION_OPTIONS[fpsIdx] })}>保存</button>
         </div>
       </div>
     </div>
@@ -2509,7 +2536,7 @@ function App() {
 
   
   const buildExportSvg = (opts = {}) => {
-    const { bg = "theme", raster = false, iconFrame = null } = opts;
+    const { bg = "theme", raster = false, iconElapsedMs = null } = opts;
     const source = document.querySelector(".route-svg");
     if (!source) return null;
     const svg = source.cloneNode(true);
@@ -2530,9 +2557,9 @@ function App() {
         if (!sourceIcon) { fo.remove(); return; }
         const icon = sourceIcon.cloneNode(true);
         ["x", "y", "width", "height"].forEach(name => icon.setAttribute(name, fo.getAttribute(name) ?? "0"));
-        if (iconFrame !== null && activeMap.theme.iconAnimation) {
+        if (iconElapsedMs !== null && activeMap.theme.iconAnimation) {
           const kind = fo.closest(".nd")?.getAttribute("data-kind") ?? "skirmish";
-          const motion = getIconIdleMotion(kind, iconFrame);
+          const motion = getIconIdleMotionAt(kind, iconElapsedMs);
           icon.setAttribute("transform", `translate(${motion.x} ${motion.y}) rotate(${motion.rotation} 50 50)`);
         }
         icon.setAttribute("overflow", "visible");
@@ -2557,8 +2584,8 @@ function App() {
     setTimeout(() => URL.revokeObjectURL(url), 800);
   };
 
-  const rasterizeExportFrame = async ({ bg, scale, iconFrame = null }) => {
-    const svgText = buildExportSvg({ bg, raster: true, iconFrame });
+  const rasterizeExportFrame = async ({ bg, scale, iconElapsedMs = null }) => {
+    const svgText = buildExportSvg({ bg, raster: true, iconElapsedMs });
     if (!svgText) throw new Error("SVGの生成に失敗しました");
     const layout = computeLayout(map);
     const img = new Image();
@@ -2579,24 +2606,27 @@ function App() {
     }
   };
 
-  const performExportImage = async ({ bg, scale, format, quality, delayMs = 250 }) => {
+  const performExportImage = async ({ bg, scale, format, quality, animationOption = ICON_ANIMATION_OPTIONS[0] }) => {
     try {
-      const frameCount = (format === "gif" || format === "apng") && activeMap.theme.iconAnimation ? 3 : 1;
+      const frameSchedule = (format === "gif" || format === "apng") && activeMap.theme.iconAnimation
+        ? createIconAnimationFrameSchedule(animationOption.frameCount)
+        : [{ elapsedMs: null, delayMs: ICON_IDLE_CYCLE_MS }];
       const canvases = [];
-      for (let frame = 0; frame < frameCount; frame += 1) {
-        canvases.push(await rasterizeExportFrame({ bg, scale, iconFrame: frameCount > 1 ? frame : null }));
+      for (const frame of frameSchedule) {
+        canvases.push(await rasterizeExportFrame({ bg, scale, iconElapsedMs: frame.elapsedMs }));
       }
+      const frameDelaysMs = frameSchedule.map(frame => frame.delayMs);
       const canvas = canvases[0];
       let imageBlob;
       let extension;
       let label;
       if (format === "gif") {
-        imageBlob = encodeGif(canvases.map(item => item.getContext("2d").getImageData(0, 0, item.width, item.height).data), { width: canvas.width, height: canvas.height, delayMs });
+        imageBlob = encodeGif(canvases.map(item => item.getContext("2d").getImageData(0, 0, item.width, item.height).data), { width: canvas.width, height: canvas.height, frameDelaysMs });
         extension = "gif"; label = "GIF";
       } else if (format === "apng") {
         const pngFrames = await Promise.all(canvases.map(item => new Promise(res => item.toBlob(res, "image/png"))));
         if (pngFrames.some(frame => !frame)) throw new Error("APNGフレームを生成できませんでした");
-        imageBlob = await encodeApng(pngFrames, { delayMs });
+        imageBlob = await encodeApng(pngFrames, { frameDelaysMs });
         extension = "png"; label = "APNG";
       } else {
         const mime = format === "jpeg" ? "image/jpeg" : "image/png";
@@ -2606,7 +2636,7 @@ function App() {
       }
       if (!imageBlob) throw new Error("画像Blobを生成できませんでした");
       downloadBlob(`kagami-map@${scale}x.${extension}`, imageBlob);
-      notify(`${label}を保存しました (${scale}× / 背景: ${bgLabel(bg)}${format === "jpeg" ? ` / 画質: ${Math.round(quality * 100)}%` : frameCount > 1 ? ` / ${Math.round(1000 / delayMs)}FPS` : ""})`);
+      notify(`${label}を保存しました (${scale}× / 背景: ${bgLabel(bg)}${format === "jpeg" ? ` / 画質: ${Math.round(quality * 100)}%` : frameSchedule.length > 1 ? ` / ${animationOption.fps}FPS・0.75秒/周` : ""})`);
     } catch {
       notify("画像の生成に失敗しました");
     }

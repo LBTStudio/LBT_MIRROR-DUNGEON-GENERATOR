@@ -32,22 +32,25 @@ test("低FPSアイコンモードとGIF・APNG保存入口を持つ", () => {
   assert.match(source, /encodeApng\(/);
 });
 
-test("GIF・APNGのアニメーション速度はGIF89a遅延に沿う3段階で選べる", () => {
-  assert.match(source, /fps: 4, delayMs: 250/);
-  assert.match(source, /fps: 8, delayMs: 125/);
-  assert.match(source, /fps: 12, delayMs: 83/);
-  assert.match(source, /アニメーション速度/);
-  assert.match(source, /GIF89a標準の1\/100秒単位で設定/);
-  assert.match(source, /encodeGif\([\s\S]*delayMs \}/);
-  assert.match(source, /encodeApng\(pngFrames, \{ delayMs \}\)/);
+test("GIF・APNGの滑らかさ選択はマップ見本と同じ0.75秒サイクルを維持する", () => {
+  assert.match(source, /const ICON_IDLE_CYCLE_MS = 750/);
+  assert.match(source, /fps: 4, label: "低 \(4fps\)"/);
+  assert.match(source, /fps: 8, label: "中 \(8fps\)"/);
+  assert.match(source, /fps: 12, label: "高 \(12fps\)"/);
+  assert.match(source, /アニメーションのなめらかさ/);
+  assert.match(source, /すべてマップ上の見本と同じ0\.75秒で1周します/);
+  assert.match(source, /createIconAnimationFrameSchedule/);
+  assert.match(source, /frameDelaysMs/);
+  assert.match(source, /0\.75秒\/周/);
 });
 
 test("低FPSアイコンモードは種別別モーションを画面とGIF・APNG出力で共有する", () => {
   assert.match(source, /const ICON_IDLE_MOTIONS/);
   assert.match(source, /function getIconIdleMotion/);
+  assert.match(source, /function getIconIdleMotionAt/);
   assert.match(source, /icon-idle icon-idle-\$\{node\.kind\}/);
   assert.match(source, /data-kind=\{node\.kind\}/);
-  assert.match(source, /getIconIdleMotion\(kind, iconFrame\)/);
+  assert.match(source, /getIconIdleMotionAt\(kind, iconElapsedMs\)/);
   assert.match(markup, /icon-idle-skirmish/);
   assert.match(markup, /icon-idle-boss/);
   assert.match(markup, /prefers-reduced-motion: reduce/);

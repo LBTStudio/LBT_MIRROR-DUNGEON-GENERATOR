@@ -1,0 +1,30 @@
+{
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "dialog": {
+    "width": 358,
+    "height": 501
+  },
+  "fpsButtons": [
+    {
+      "text": "低 (4fps)",
+      "width": 101,
+      "height": 37
+    },
+    {
+      "text": "中 (8fps)",
+      "width": 101,
+      "height": 37
+    },
+    {
+      "text": "高 (12fps)",
+      "width": 101,
+      "height": 37
+    }
+  ],
+  "hasAllFps": true,
+  "cycleHint": true,
+  "horizontalOverflow": false
+}

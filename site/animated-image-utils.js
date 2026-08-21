@@ -119,16 +119,23 @@
     parts.push(new Uint8Array([0]));
     return parts;
   }
-  function encodeGif(frames, { width, height, delayMs = 250, loop = 0 } = {}) {
+  function normalizedFrameDelays(frameCount, delayMs, frameDelaysMs) {
+    if (Array.isArray(frameDelaysMs) && frameDelaysMs.length === frameCount) {
+      return frameDelaysMs.map(delay => Math.max(1, Number(delay) || 1));
+    }
+    return Array.from({ length: frameCount }, () => Math.max(1, Number(delayMs) || 1));
+  }
+  function encodeGif(frames, { width, height, delayMs = 250, frameDelaysMs = null, loop = 0 } = {}) {
     if (!Array.isArray(frames) || !frames.length || !width || !height) throw new Error("GIFフレームを生成できませんでした");
     const expected = width * height * 4;
     if (frames.some(frame => !frame || frame.length !== expected)) throw new Error("GIFフレームの寸法が一致しません");
     const parts = [encoder.encode("GIF89a"), u16(width), u16(height), new Uint8Array([0xf7, 0, 0]), gifPalette332()];
     if (frames.length > 1) parts.push(new Uint8Array([0x21, 0xff, 0x0b]), encoder.encode("NETSCAPE2.0"), new Uint8Array([0x03, 0x01, loop & 255, (loop >>> 8) & 255, 0]));
-    const delay = Math.max(1, Math.round(delayMs / 10));
-    frames.forEach(frame => {
+    const frameDelays = normalizedFrameDelays(frames.length, delayMs, frameDelaysMs);
+    frames.forEach((frame, index) => {
       const indexes = quantize332(frame);
       const compressed = lzwEncodeGif(indexes);
+      const delay = Math.max(1, Math.round(frameDelays[index] / 10));
       parts.push(new Uint8Array([0x21, 0xf9, 0x04, 0x04, delay & 255, (delay >>> 8) & 255, 0, 0]));
       parts.push(new Uint8Array([0x2c]), u16(0), u16(0), u16(width), u16(height), new Uint8Array([0, 8]));
       parts.push(...gifSubBlocks(compressed));
@@ -160,16 +167,17 @@
     const delay = Math.max(1, Math.round(delayMs));
     return concat([u32(sequence), u32(width), u32(height), u32(0), u32(0), new Uint8Array([(delay >>> 8) & 255, delay & 255, 0x03, 0xe8, 0, 0])]);
   }
-  async function encodeApng(pngBlobs, { delayMs = 250, loop = 0 } = {}) {
+  async function encodeApng(pngBlobs, { delayMs = 250, frameDelaysMs = null, loop = 0 } = {}) {
     if (!Array.isArray(pngBlobs) || !pngBlobs.length) throw new Error("APNGフレームを生成できませんでした");
     const frames = await Promise.all(pngBlobs.map(async blob => parsePng(new Uint8Array(await blob.arrayBuffer()))));
     const { width, height } = frames[0];
     if (frames.some(frame => frame.width !== width || frame.height !== height)) throw new Error("APNGフレームの寸法が一致しません");
+    const frameDelays = normalizedFrameDelays(frames.length, delayMs, frameDelaysMs);
     let sequence = 0;
-    const parts = [PNG_SIGNATURE, pngChunk("IHDR", frames[0].ihdr), pngChunk("acTL", concat([u32(frames.length), u32(loop)])), pngChunk("fcTL", frameControl(sequence++, width, height, delayMs))];
+    const parts = [PNG_SIGNATURE, pngChunk("IHDR", frames[0].ihdr), pngChunk("acTL", concat([u32(frames.length), u32(loop)])), pngChunk("fcTL", frameControl(sequence++, width, height, frameDelays[0]))];
     frames[0].idat.forEach(data => parts.push(pngChunk("IDAT", data)));
-    frames.slice(1).forEach(frame => {
-      parts.push(pngChunk("fcTL", frameControl(sequence++, width, height, delayMs)));
+    frames.slice(1).forEach((frame, index) => {
+      parts.push(pngChunk("fcTL", frameControl(sequence++, width, height, frameDelays[index + 1])));
       frame.idat.forEach(data => parts.push(pngChunk("fdAT", concat([u32(sequence++), data]))));
     });
     parts.push(pngChunk("IEND", new Uint8Array()));
