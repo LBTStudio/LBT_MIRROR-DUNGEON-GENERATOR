@@ -59,15 +59,35 @@
     let bitBuffer = 0;
     let bitCount = 0;
     let codeSize = minCodeSize + 1;
+    let maxCode = (1 << codeSize) - 1;
     let nextCode = end + 1;
+    let clearPending = false;
     let dictionary = new Map();
     const emit = (code) => {
       bitBuffer |= code << bitCount;
       bitCount += codeSize;
       while (bitCount >= 8) { bytes.push(bitBuffer & 255); bitBuffer >>>= 8; bitCount -= 8; }
+      // GIF89a LZWは「辞書に次のコードを追加した後」ではなく、
+      // 現在のコードを出力した直後の空き辞書番号で次のコード幅を決める。
+      // この順序でブラウザ・Pillowなどの標準デコーダと一致する。
+      if (nextCode > maxCode || clearPending) {
+        if (clearPending) {
+          codeSize = minCodeSize + 1;
+          maxCode = (1 << codeSize) - 1;
+          clearPending = false;
+        } else if (codeSize < 12) {
+          codeSize += 1;
+          maxCode = codeSize === 12 ? (1 << codeSize) : (1 << codeSize) - 1;
+        }
+      }
     };
-    const reset = () => { dictionary = new Map(); codeSize = minCodeSize + 1; nextCode = end + 1; };
-    if (!indexes.length) return new Uint8Array([clear, end]);
+    const reset = () => { dictionary = new Map(); nextCode = end + 1; clearPending = true; };
+    if (!indexes.length) {
+      emit(clear);
+      emit(end);
+      if (bitCount > 0) bytes.push(bitBuffer & 255);
+      return new Uint8Array(bytes);
+    }
     emit(clear);
     let prefix = indexes[0];
     for (let index = 1; index < indexes.length; index += 1) {
@@ -76,15 +96,14 @@
       const hit = dictionary.get(key);
       if (hit !== undefined) { prefix = hit; continue; }
       emit(prefix);
+      prefix = value;
       if (nextCode < 4096) {
         dictionary.set(key, nextCode);
         nextCode += 1;
-        if (nextCode === (1 << codeSize) && codeSize < 12) codeSize += 1;
       } else {
-        emit(clear);
         reset();
+        emit(clear);
       }
-      prefix = value;
     }
     emit(prefix);
     emit(end);

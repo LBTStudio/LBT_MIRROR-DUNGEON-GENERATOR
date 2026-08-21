@@ -2031,6 +2031,12 @@ function ExportDialog({ open, format, theme, iconAnimation, onClose, onConfirm }
   const [bg, setBg] = React.useState("theme");
   const [scale, setScale] = React.useState(2);
   const [quality, setQuality] = React.useState(0.92);
+  const FPS_OPTIONS = [
+    { fps: 4, delayMs: 250, label: "低 (4fps)", hint: "どっとアニメ調" },
+    { fps: 8, delayMs: 125, label: "中 (8fps)", hint: "なめらか" },
+    { fps: 12, delayMs: 83, label: "高 (12fps)", hint: "最もなめらか" },
+  ];
+  const [fpsIdx, setFpsIdx] = React.useState(0);
   const dialogRef = React.useRef(null);
   React.useEffect(() => {
     if (open && (format === "jpeg" || format === "gif") && bg === "transparent") setBg("theme");
@@ -2087,6 +2093,19 @@ function ExportDialog({ open, format, theme, iconAnimation, onClose, onConfirm }
               <p className="modal-hint">
                 {scale}× → 実寸 ×{scale}倍の{formatLabel}（{format === "jpeg" ? "高品質JPEG" : format === "gif" || format === "apng" ? (iconAnimation ? "アイコンの低FPSアニメを含む" : "静止1フレーム") : scale === 4 ? "高精細印刷向け" : scale === 1 ? "軽量" : "標準"}）
               </p>
+              {(format === "gif" || format === "apng") && iconAnimation && (
+                <>
+                  <label className="i-label">アニメーション速度</label>
+                  <div className="scale-choices">
+                    {FPS_OPTIONS.map((opt, index) => (
+                      <button key={opt.fps} className={`scale-choice ${fpsIdx === index ? "on" : ""}`} onClick={() => setFpsIdx(index)}>
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="modal-hint">{FPS_OPTIONS[fpsIdx].hint} — GIF89a標準の1/100秒単位で設定</p>
+                </>
+              )}
             </>
           )}
           {format === "jpeg" && (
@@ -2104,7 +2123,7 @@ function ExportDialog({ open, format, theme, iconAnimation, onClose, onConfirm }
         </div>
         <div className="modal-foot">
           <button className="btn" onClick={onClose}>キャンセル</button>
-          <button className="btn primary" onClick={() => onConfirm({ bg, scale, quality })}>保存</button>
+          <button className="btn primary" onClick={() => onConfirm({ bg, scale, quality, delayMs: FPS_OPTIONS[fpsIdx].delayMs })}>保存</button>
         </div>
       </div>
     </div>
@@ -2548,7 +2567,7 @@ function App() {
     }
   };
 
-  const performExportImage = async ({ bg, scale, format, quality }) => {
+  const performExportImage = async ({ bg, scale, format, quality, delayMs = 250 }) => {
     try {
       const frameCount = (format === "gif" || format === "apng") && activeMap.theme.iconAnimation ? 3 : 1;
       const canvases = [];
@@ -2560,12 +2579,12 @@ function App() {
       let extension;
       let label;
       if (format === "gif") {
-        imageBlob = encodeGif(canvases.map(item => item.getContext("2d").getImageData(0, 0, item.width, item.height).data), { width: canvas.width, height: canvas.height, delayMs: 250 });
+        imageBlob = encodeGif(canvases.map(item => item.getContext("2d").getImageData(0, 0, item.width, item.height).data), { width: canvas.width, height: canvas.height, delayMs });
         extension = "gif"; label = "GIF";
       } else if (format === "apng") {
         const pngFrames = await Promise.all(canvases.map(item => new Promise(res => item.toBlob(res, "image/png"))));
         if (pngFrames.some(frame => !frame)) throw new Error("APNGフレームを生成できませんでした");
-        imageBlob = await encodeApng(pngFrames, { delayMs: 250 });
+        imageBlob = await encodeApng(pngFrames, { delayMs });
         extension = "png"; label = "APNG";
       } else {
         const mime = format === "jpeg" ? "image/jpeg" : "image/png";
@@ -2575,7 +2594,7 @@ function App() {
       }
       if (!imageBlob) throw new Error("画像Blobを生成できませんでした");
       downloadBlob(`kagami-map@${scale}x.${extension}`, imageBlob);
-      notify(`${label}を保存しました (${scale}× / 背景: ${bgLabel(bg)}${format === "jpeg" ? ` / 画質: ${Math.round(quality * 100)}%` : frameCount > 1 ? " / 4FPS" : ""})`);
+      notify(`${label}を保存しました (${scale}× / 背景: ${bgLabel(bg)}${format === "jpeg" ? ` / 画質: ${Math.round(quality * 100)}%` : frameCount > 1 ? ` / ${Math.round(1000 / delayMs)}FPS` : ""})`);
     } catch {
       notify("画像の生成に失敗しました");
     }

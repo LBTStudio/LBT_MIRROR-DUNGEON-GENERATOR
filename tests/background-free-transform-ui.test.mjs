@@ -32,6 +32,16 @@ test("低FPSアイコンモードとGIF・APNG保存入口を持つ", () => {
   assert.match(source, /encodeApng\(/);
 });
 
+test("GIF・APNGのアニメーション速度はGIF89a遅延に沿う3段階で選べる", () => {
+  assert.match(source, /fps: 4, delayMs: 250/);
+  assert.match(source, /fps: 8, delayMs: 125/);
+  assert.match(source, /fps: 12, delayMs: 83/);
+  assert.match(source, /アニメーション速度/);
+  assert.match(source, /GIF89a標準の1\/100秒単位で設定/);
+  assert.match(source, /encodeGif\([\s\S]*delayMs \}/);
+  assert.match(source, /encodeApng\(pngFrames, \{ delayMs \}\)/);
+});
+
 test("低FPSアイコンモードは種別別モーションを画面とGIF・APNG出力で共有する", () => {
   assert.match(source, /const ICON_IDLE_MOTIONS/);
   assert.match(source, /function getIconIdleMotion/);
