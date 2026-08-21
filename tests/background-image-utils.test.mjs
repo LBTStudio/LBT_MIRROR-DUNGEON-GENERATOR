@@ -18,6 +18,8 @@ test("背景設定は保存可能な画像と調整値だけを維持する", ()
     x: 240,
     y: -120,
     scale: 1.75,
+    scaleX: 1.4,
+    scaleY: 2.1,
     opacity: 0.55,
   });
   assert.equal(background.enabled, true);
@@ -27,7 +29,16 @@ test("背景設定は保存可能な画像と調整値だけを維持する", ()
   assert.equal(background.x, 240);
   assert.equal(background.y, -120);
   assert.equal(background.scale, 1.75);
+  assert.equal(background.scaleX, 1.4);
+  assert.equal(background.scaleY, 2.1);
   assert.equal(background.opacity, 0.55);
+});
+
+test("旧保存の倍率は自由変形の横軸・縦軸へ同じ値で補完される", () => {
+  const background = utils.normalizeBackground({ enabled: true, dataUrl, width: 300, height: 200, scale: 1.6 });
+  assert.equal(background.scale, 1.6);
+  assert.equal(background.scaleX, 1.6);
+  assert.equal(background.scaleY, 1.6);
 });
 
 test("巨大または不正な背景データは読込時に無効化される", () => {
@@ -46,14 +57,21 @@ test("背景変形の初期化は画像を残して位置・倍率・不透明�
   assert.equal(reset.x, 0);
   assert.equal(reset.y, 0);
   assert.equal(reset.scale, 1);
+  assert.equal(reset.scaleX, 1);
+  assert.equal(reset.scaleY, 1);
   assert.equal(reset.opacity, 0.38);
 });
 
 test("非対応形式の画像は変換前に拒否される", async () => {
   await assert.rejects(
-    () => utils.prepareBackgroundImage({ type: "image/gif", size: 100 }),
-    /PNG・JPEG・WebP形式/
+    () => utils.prepareBackgroundImage({ type: "image/bmp", size: 100 }),
+    /PNG・JPEG・WebP・GIF・APNG形式/
   );
+});
+
+test("GIF・APNGは背景画像の対応形式として許可される", () => {
+  assert.equal(utils.SUPPORTED_IMAGE_TYPES.has("image/gif"), true);
+  assert.equal(utils.SUPPORTED_IMAGE_TYPES.has("image/apng"), true);
 });
 
 test("上限を超える画像は変換前に拒否される", async () => {

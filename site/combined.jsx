@@ -366,6 +366,9 @@ const CSS_THEME = Object.freeze({
   ink: "var(--map-ink)", inkDim: "var(--map-ink-dim)", brass: "var(--map-brass)", brassHi: "var(--map-brass-hi)",
   blood: "var(--map-blood)", bloodHi: "var(--map-blood-hi)", warn: "var(--map-warn)", line: "var(--map-line)", lineHi: "var(--map-line-hi)",
 });
+const BACKGROUND_MIN_SCALE = 0.25;
+const BACKGROUND_MAX_SCALE = 4;
+const BACKGROUND_MIN_FRAME_SIZE = 24;
 
 const THEME_PRESETS = [
   { id: "dante", label: "既定", colors: { background: "#0b0a0d", panel: "#161318", panelHi: "#1e1a20", edge: "#2c262e", ink: "#eae3d5", inkDim: "#8a8375", brass: "#d4a24b", brassHi: "#e5b55e", blood: "#c8443c", bloodHi: "#e35b53", warn: "#f0d24b", line: "#7a5a48", lineHi: "#d4a24b" } },
@@ -402,6 +405,7 @@ const {
   resetBackgroundTransform,
   prepareBackgroundImage,
 } = window.KagamiBackgroundUtils;
+const { encodeGif, encodeApng } = window.KagamiAnimatedImageUtils;
 
 function uuid() {
   return (globalThis.crypto?.randomUUID?.() ?? `n_${Date.now()}_${Math.random().toString(36).slice(2,7)}`);
@@ -473,6 +477,7 @@ function baseMap() {
       lineHi: THEME.lineHi,
       showLabels: true,
       iconSize: 44,
+      iconAnimation: false,
     },
   };
 }
@@ -520,6 +525,7 @@ function normalizeMap(input) {
       lineHi: String(input.theme?.lineHi ?? THEME.lineHi),
       showLabels: input.theme?.showLabels === undefined ? true : Boolean(input.theme.showLabels),
       iconSize: Math.max(28, Math.min(64, Number(input.theme?.iconSize) || 44)),
+      iconAnimation: Boolean(input.theme?.iconAnimation),
     },
   };
 }
@@ -883,7 +889,7 @@ function edgePath(a, b) {
   return `M ${a.x + NODE_W/2 - 4} ${a.y} C ${a.x + bend} ${a.y}, ${b.x - bend} ${b.y}, ${b.x - NODE_W/2 + 4} ${b.y}`;
 }
 
-function NodeMarker({ node, pos, selected, isPulse, iconSize, showLabel, theme, onSelect, onStartLink, onRemove }) {
+function NodeMarker({ node, pos, selected, isPulse, iconSize, showLabel, iconAnimation, theme, onSelect, onStartLink, onRemove }) {
   const kindDef = KIND_INDEX[node.kind] ?? KIND_INDEX.skirmish;
   const Icon = IconMap[node.kind] ?? IconMap.skirmish;
   const tone = kindDef.tone;
@@ -915,7 +921,7 @@ function NodeMarker({ node, pos, selected, isPulse, iconSize, showLabel, theme, 
       </g>
       
       <foreignObject x={-iconSize/2} y={-iconSize/2} width={iconSize} height={iconSize} style={{ pointerEvents: "none" }}>
-        <div xmlns="http://www.w3.org/1999/xhtml" style={{ width: "100%", height: "100%" }}>
+        <div xmlns="http://www.w3.org/1999/xhtml" data-role="map-icon" className={iconAnimation ? "icon-idle" : ""} style={{ width: "100%", height: "100%" }}>
           <Icon ink={theme.ink} dark={theme.background} midGray={theme.panelHi}
                 accent={tone === "blood" ? theme.bloodHi : theme.brass} warn={theme.warn} />
         </div>
@@ -988,10 +994,43 @@ const MapCanvas = React.memo(function MapCanvas({
   const didInitFit = React.useRef(false);
   const backgroundDragRef = React.useRef(null);
   const [backgroundDragOffset, setBackgroundDragOffset] = React.useState(null);
+  const backgroundTransformRef = React.useRef(null);
+  const [backgroundTransformPreview, setBackgroundTransformPreview] = React.useState(null);
   const background = map.background;
-  const renderedBackground = backgroundDragOffset
+  const renderedBackground = backgroundTransformPreview
+    ? backgroundTransformPreview
+    : backgroundDragOffset
     ? { ...background, x: background.x + backgroundDragOffset.x, y: background.y + backgroundDragOffset.y }
     : background;
+  const getBackgroundFrame = React.useCallback((value) => {
+    if (!value?.enabled || !value.width || !value.height) return null;
+    const scaleX = Number(value.scaleX ?? value.scale ?? 1);
+    const scaleY = Number(value.scaleY ?? value.scale ?? 1);
+    const width = value.width * scaleX;
+    const height = value.height * scaleY;
+    return {
+      x: layout.width / 2 + value.x - width / 2,
+      y: layout.height / 2 + value.y - height / 2,
+      width,
+      height,
+      scaleX,
+      scaleY,
+    };
+  }, [layout.width, layout.height]);
+  const renderedBackgroundFrame = getBackgroundFrame(renderedBackground);
+  const compactBackgroundTransform = viewport.w <= 768;
+  const backgroundHandleHitSize = compactBackgroundTransform ? 84 : 20;
+  const backgroundHandleVisualSize = compactBackgroundTransform ? 48 : 14;
+  const backgroundFrameHandleSpecs = React.useMemo(() => ([
+    { id: "nw", x: 0, y: 0, cursor: "nwse-resize" },
+    { id: "n", x: 0.5, y: 0, cursor: "ns-resize" },
+    { id: "ne", x: 1, y: 0, cursor: "nesw-resize" },
+    { id: "e", x: 1, y: 0.5, cursor: "ew-resize" },
+    { id: "se", x: 1, y: 1, cursor: "nwse-resize" },
+    { id: "s", x: 0.5, y: 1, cursor: "ns-resize" },
+    { id: "sw", x: 0, y: 1, cursor: "nesw-resize" },
+    { id: "w", x: 0, y: 0.5, cursor: "ew-resize" },
+  ]), []);
 
   const applyView = React.useCallback(() => {
     const view = viewRef.current;
@@ -1037,6 +1076,27 @@ const MapCanvas = React.memo(function MapCanvas({
   React.useEffect(() => {
     if (didInitFit.current && selectedId && window.innerWidth > 768) fit();
   }, [selectedId, fit]);
+
+  React.useEffect(() => {
+    if (!backgroundAdjusting || viewport.w > 768 || !renderedBackgroundFrame || viewport.w < 100 || viewport.h < 100) return;
+    const pad = 18;
+    const width = Math.max(layout.width, renderedBackgroundFrame.width);
+    const height = Math.max(layout.height, renderedBackgroundFrame.height);
+    const zoom = Math.max(0.2, Math.min((viewport.w - pad * 2) / width, (viewport.h - pad * 2) / height));
+    viewRef.current = { x: -(layout.width * zoom) / 2, y: -(layout.height * zoom) / 2, zoom };
+    applyView();
+    const frame = window.requestAnimationFrame(() => {
+      const wrapRect = wrapRef.current?.getBoundingClientRect();
+      const svgRect = svgRef.current?.getBoundingClientRect();
+      if (!wrapRect || !svgRect) return;
+      const dx = wrapRect.left + (wrapRect.width - svgRect.width) / 2 - svgRect.left;
+      const dy = wrapRect.top + (wrapRect.height - svgRect.height) / 2 - svgRect.top;
+      if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return;
+      viewRef.current = { ...viewRef.current, x: viewRef.current.x + dx, y: viewRef.current.y + dy };
+      applyView();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [backgroundAdjusting, renderedBackgroundFrame, viewport, layout.width, layout.height, applyView]);
 
   
   React.useEffect(() => {
@@ -1090,6 +1150,68 @@ const MapCanvas = React.memo(function MapCanvas({
     setBackgroundDragOffset(null);
     return true;
   };
+  const clampBackgroundScale = (value, fallback = 1) => Math.min(BACKGROUND_MAX_SCALE, Math.max(BACKGROUND_MIN_SCALE, Number.isFinite(value) ? value : fallback));
+  const beginBackgroundFrameTransform = (e, handle) => {
+    if (!backgroundAdjusting || !background?.enabled) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const frame = getBackgroundFrame(background);
+    if (!frame) return;
+    backgroundTransformRef.current = {
+      id: e.pointerId,
+      handle,
+      start: clientToSvg(e.clientX, e.clientY),
+      frame,
+      background: { ...background },
+    };
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+  };
+  const calculateBackgroundFrameTransform = (e) => {
+    const transform = backgroundTransformRef.current;
+    if (!transform || transform.id !== e.pointerId) return null;
+    const point = clientToSvg(e.clientX, e.clientY);
+    const dx = point.x - transform.start.x;
+    const dy = point.y - transform.start.y;
+    const { handle, frame, background: start } = transform;
+    if (handle === "move") return { ...start, x: start.x + dx, y: start.y + dy };
+    let left = frame.x;
+    let right = frame.x + frame.width;
+    let top = frame.y;
+    let bottom = frame.y + frame.height;
+    if (handle.includes("w")) left = Math.min(right - BACKGROUND_MIN_FRAME_SIZE, left + dx);
+    if (handle.includes("e")) right = Math.max(left + BACKGROUND_MIN_FRAME_SIZE, right + dx);
+    if (handle.includes("n")) top = Math.min(bottom - BACKGROUND_MIN_FRAME_SIZE, top + dy);
+    if (handle.includes("s")) bottom = Math.max(top + BACKGROUND_MIN_FRAME_SIZE, bottom + dy);
+    const width = right - left;
+    const height = bottom - top;
+    const scaleX = clampBackgroundScale(width / Math.max(1, start.width), frame.scaleX);
+    const scaleY = clampBackgroundScale(height / Math.max(1, start.height), frame.scaleY);
+    return {
+      ...start,
+      x: (left + right) / 2 - layout.width / 2,
+      y: (top + bottom) / 2 - layout.height / 2,
+      scaleX,
+      scaleY,
+      scale: Number(Math.sqrt(scaleX * scaleY).toFixed(4)),
+    };
+  };
+  const moveBackgroundFrameTransform = (e) => {
+    const preview = calculateBackgroundFrameTransform(e);
+    if (!preview) return false;
+    setBackgroundTransformPreview(preview);
+    return true;
+  };
+  const commitBackgroundFrameTransform = (e) => {
+    const preview = calculateBackgroundFrameTransform(e);
+    if (!preview) return false;
+    const start = backgroundTransformRef.current?.background;
+    if (start && (Math.abs(preview.x - start.x) > 0.5 || Math.abs(preview.y - start.y) > 0.5 || Math.abs(preview.scaleX - (start.scaleX ?? start.scale)) > 0.002 || Math.abs(preview.scaleY - (start.scaleY ?? start.scale)) > 0.002)) {
+      mutate(draft => { draft.background = normalizeBackground(preview); });
+    }
+    backgroundTransformRef.current = null;
+    setBackgroundTransformPreview(null);
+    return true;
+  };
   React.useEffect(() => {
     const onKey = (e) => {
       if (e.code === "Space" && !e.repeat && document.activeElement?.tagName !== "INPUT") {
@@ -1141,6 +1263,7 @@ const MapCanvas = React.memo(function MapCanvas({
     }
   };
   const onWrapPointerMove = (e) => {
+    if (moveBackgroundFrameTransform(e)) return;
     if (moveBackgroundDrag(e)) return;
     if (e.pointerType === "touch") {
       if (activePointersRef.current.has(e.pointerId)) activePointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -1180,6 +1303,7 @@ const MapCanvas = React.memo(function MapCanvas({
     }
   };
   const onWrapPointerUp = (e) => {
+    if (commitBackgroundFrameTransform(e)) return;
     if (commitBackgroundDrag(e)) return;
     if (e.pointerType === "touch") {
       const gesture = panGestureRef.current?.id === e.pointerId ? panGestureRef.current : null;
@@ -1319,14 +1443,44 @@ const MapCanvas = React.memo(function MapCanvas({
             <image
               data-role="background-image"
               href={renderedBackground.dataUrl}
-              x={layout.width / 2 + renderedBackground.x - (renderedBackground.width * renderedBackground.scale) / 2}
-              y={layout.height / 2 + renderedBackground.y - (renderedBackground.height * renderedBackground.scale) / 2}
-              width={renderedBackground.width * renderedBackground.scale}
-              height={renderedBackground.height * renderedBackground.scale}
+              x={renderedBackgroundFrame?.x}
+              y={renderedBackgroundFrame?.y}
+              width={renderedBackgroundFrame?.width}
+              height={renderedBackgroundFrame?.height}
               opacity={renderedBackground.opacity}
               preserveAspectRatio="none"
               pointerEvents="none"
             />
+          )}
+          {backgroundAdjusting && renderedBackgroundFrame && (
+            <g data-role="background-transform-frame" style={{ pointerEvents: "all" }}>
+              <rect
+                x={renderedBackgroundFrame.x}
+                y={renderedBackgroundFrame.y}
+                width={renderedBackgroundFrame.width}
+                height={renderedBackgroundFrame.height}
+                fill="transparent"
+                stroke={theme.brassHi}
+                strokeWidth="1.5"
+                strokeDasharray="7 5"
+                onPointerDown={(e) => beginBackgroundFrameTransform(e, "move")}
+                style={{ cursor: "move" }}
+              />
+              {backgroundFrameHandleSpecs.map((handle) => {
+                const hitSize = backgroundHandleHitSize;
+                const visualSize = backgroundHandleVisualSize;
+                const x = renderedBackgroundFrame.x + renderedBackgroundFrame.width * handle.x;
+                const y = renderedBackgroundFrame.y + renderedBackgroundFrame.height * handle.y;
+                return <g key={handle.id}>
+                  <rect data-role={`background-transform-handle-${handle.id}`} x={x - hitSize / 2} y={y - hitSize / 2} width={hitSize} height={hitSize}
+                        rx={hitSize / 2} fill="transparent"
+                        onPointerDown={(e) => beginBackgroundFrameTransform(e, handle.id)}
+                        style={{ cursor: handle.cursor }} />
+                  <rect x={x - visualSize / 2} y={y - visualSize / 2} width={visualSize} height={visualSize}
+                        rx="2" fill={theme.background} stroke={theme.brassHi} strokeWidth="2" pointerEvents="none" />
+                </g>;
+              })}
+            </g>
           )}
           <defs>
             <linearGradient id="colgrad" x1="0" y1="0" x2="0" y2="1">
@@ -1539,6 +1693,7 @@ const MapCanvas = React.memo(function MapCanvas({
                   isPulse={!selectedId && node.kind === "origin"}
                   iconSize={map.theme.iconSize + 12}
                   showLabel={showLabels}
+                  iconAnimation={Boolean(map.theme.iconAnimation)}
                   theme={theme}
                   onSelect={(id) => setSelectedId(id)}
                   onStartLink={(id, e) => startLink(id, e)}
@@ -1578,7 +1733,7 @@ const MapCanvas = React.memo(function MapCanvas({
       </div>
       {backgroundAdjusting && background?.enabled && (
         <div className="background-adjust-indicator" aria-live="polite">
-          背景調整中：空白をドラッグして位置を変更
+          背景調整中：枠内で移動 ／ 角・辺で幅・高さを調整
         </div>
       )}
       <div className="center-crosshair" aria-hidden="true">
@@ -1855,13 +2010,13 @@ function Inspector({ map, selectedId, mutate, mobileSheet, setMobileSheet }) {
   );
 }
 
-function ExportDialog({ open, format, theme, onClose, onConfirm }) {
+function ExportDialog({ open, format, theme, iconAnimation, onClose, onConfirm }) {
   const [bg, setBg] = React.useState("theme");
   const [scale, setScale] = React.useState(2);
   const [quality, setQuality] = React.useState(0.92);
   const dialogRef = React.useRef(null);
   React.useEffect(() => {
-    if (open && format === "jpeg" && bg === "transparent") setBg("theme");
+    if (open && (format === "jpeg" || format === "gif") && bg === "transparent") setBg("theme");
   }, [open, format, bg]);
   React.useEffect(() => {
     if (!open) return;
@@ -1873,7 +2028,7 @@ function ExportDialog({ open, format, theme, onClose, onConfirm }) {
   }, [open, onClose]);
   if (!open) return null;
 
-  const formatLabel = format === "jpeg" ? "JPEG" : "PNG";
+  const formatLabel = format === "jpeg" ? "JPEG" : format === "gif" ? "GIF" : format === "apng" ? "APNG" : "PNG";
   return (
     <div className="modal-mask">
       <div className="modal" ref={dialogRef}>
@@ -1889,7 +2044,7 @@ function ExportDialog({ open, format, theme, onClose, onConfirm }) {
               <span>テーマ背景</span>
               <small>ダーク配色をそのまま</small>
             </button>
-            {format === "png" && (
+            {(format === "png" || format === "apng") && (
               <button className={`bg-choice ${bg === "transparent" ? "on" : ""}`} onClick={() => setBg("transparent")}>
                 <div className="bg-preview bg-check" />
                 <span>透過</span>
@@ -1902,18 +2057,18 @@ function ExportDialog({ open, format, theme, onClose, onConfirm }) {
               <small>紙・印刷向け</small>
             </button>
           </div>
-          {(format === "png" || format === "jpeg") && (
+          {(format === "png" || format === "jpeg" || format === "gif" || format === "apng") && (
             <>
               <label className="i-label">解像度倍率</label>
               <div className="scale-choices">
-                {[1, 2, 3, 4].map(v => (
+                {(format === "gif" || format === "apng" ? [1, 2] : [1, 2, 3, 4]).map(v => (
                   <button key={v} className={`scale-choice ${scale === v ? "on" : ""}`} onClick={() => setScale(v)}>
                     {v}×
                   </button>
                 ))}
               </div>
               <p className="modal-hint">
-                {scale}× → 実寸 ×{scale}倍の{formatLabel}（{format === "jpeg" ? "高品質JPEG" : scale === 4 ? "高精細印刷向け" : scale === 1 ? "軽量" : "標準"}）
+                {scale}× → 実寸 ×{scale}倍の{formatLabel}（{format === "jpeg" ? "高品質JPEG" : format === "gif" || format === "apng" ? (iconAnimation ? "アイコンの低FPSアニメを含む" : "静止1フレーム") : scale === 4 ? "高精細印刷向け" : scale === 1 ? "軽量" : "標準"}）
               </p>
             </>
           )}
@@ -1941,7 +2096,7 @@ function ExportDialog({ open, format, theme, onClose, onConfirm }) {
 
 function Toolbar({
   map, mutate, replace, undo, redo, canUndo, canRedo,
-  onExportPng, onExportJpeg, onExportJson,
+  onExportPng, onExportJpeg, onExportGif, onExportApng, onExportJson,
   onReset, onFit, onAutoConnect,
   notify, showLabels, setShowLabels,
   showThumb, setShowThumb,
@@ -2027,6 +2182,10 @@ function Toolbar({
 
   const updateBackground = (patch) => {
     mutate(draft => { draft.background = normalizeBackground({ ...draft.background, ...patch }); });
+  };
+  const updateUniformBackgroundScale = (value) => {
+    const scale = Number(value);
+    updateBackground({ scale, scaleX: scale, scaleY: scale });
   };
 
   const handleBackgroundImage = async (e) => {
@@ -2122,6 +2281,11 @@ function Toolbar({
                        onChange={e => setShowThumb(e.target.checked)} />
                 ミニマップを表示
               </label>
+              <label className="i-check">
+                <input type="checkbox" checked={Boolean(map.theme.iconAnimation)}
+                       onChange={e => replace({ ...map, theme: { ...map.theme, iconAnimation: e.target.checked } })} />
+                アイコンを低FPSアニメ調にする
+              </label>
               <label className="i-label" style={{ marginTop: 8 }}>配色プリセット</label>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 4, marginTop: 4 }}>
                 {THEME_PRESETS.map(preset => (
@@ -2156,11 +2320,11 @@ function Toolbar({
           {showBackground && (
             <div className="tb-popover background-popover">
               <label className="i-label">マップ背景</label>
-              <p className="background-status">{hasBackground ? `${background.name}（${background.width}×${background.height}）` : "PNG・JPEG・WebPをこの端末内だけで読み込みます"}</p>
+              <p className="background-status">{hasBackground ? `${background.name}（元画像 ${background.width}×${background.height}px ／ 枠 ${Math.round(background.width * (background.scaleX ?? background.scale))}×${Math.round(background.height * (background.scaleY ?? background.scale))}px）` : "PNG・JPEG・WebP・GIF・APNGをこの端末内だけで読み込みます"}</p>
               <button className="btn primary background-upload-btn" onClick={() => backgroundFileRef.current?.click()}>
                 {hasBackground ? "画像を差し替え" : "画像を選択"}
               </button>
-              <input ref={backgroundFileRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={handleBackgroundImage} style={{ display: "none" }} />
+              <input ref={backgroundFileRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/apng,.apng" onChange={handleBackgroundImage} style={{ display: "none" }} />
               {hasBackground && (
                 <>
                   <label className="i-check">
@@ -2170,11 +2334,11 @@ function Toolbar({
                   </label>
                   <button className={`btn background-adjust-btn ${backgroundAdjusting ? "is-active" : ""}`}
                           onClick={() => { setBackgroundAdjusting(value => !value); setShowBackground(false); }}>
-                    {backgroundAdjusting ? "位置調整を完了" : "位置をドラッグで調整"}
+                    {backgroundAdjusting ? "枠の調整を完了" : "枠をドラッグで自由変形"}
                   </button>
-                  <label className="i-label">拡大率 {Math.round(background.scale * 100)}%</label>
+                  <label className="i-label">均等倍率 {Math.round(background.scale * 100)}%</label>
                   <input className="background-range" type="range" min="0.25" max="4" step="0.01" value={background.scale}
-                         onChange={e => updateBackground({ scale: Number(e.target.value) })} />
+                         onChange={e => updateUniformBackgroundScale(e.target.value)} />
                   <label className="i-label">不透明度 {Math.round(background.opacity * 100)}%</label>
                   <input className="background-range" type="range" min="0.08" max="1" step="0.01" value={background.opacity}
                          onChange={e => updateBackground({ opacity: Number(e.target.value) })} />
@@ -2182,7 +2346,7 @@ function Toolbar({
                     <button className="btn" onClick={() => mutate(draft => { draft.background = resetBackgroundTransform(draft.background); })}>調整を初期化</button>
                     <button className="btn danger" onClick={() => { mutate(draft => { draft.background = createBackground(); }); setBackgroundAdjusting(false); }}>画像を削除</button>
                   </div>
-                  <p className="background-hint">調整中は空白をドラッグして背景だけを移動します。マスや結線の操作は維持されます。</p>
+                  <p className="background-hint">調整中は画像枠の内側で移動、角・辺で幅と高さを調整します。マスや結線の操作は維持されます。</p>
                 </>
               )}
             </div>
@@ -2205,6 +2369,14 @@ function Toolbar({
               <button className="popover-row" onClick={() => { setShowExport(false); onExportJpeg(); }}>
                 <span className="pr-name">JPEG 画像</span>
                 <span className="pr-desc">背景色・画質・解像度を選べる</span>
+              </button>
+              <button className="popover-row" onClick={() => { setShowExport(false); onExportGif(); }}>
+                <span className="pr-name">GIF 画像</span>
+                <span className="pr-desc">低FPSアイコンアニメを出力できる</span>
+              </button>
+              <button className="popover-row" onClick={() => { setShowExport(false); onExportApng(); }}>
+                <span className="pr-name">APNG 画像</span>
+                <span className="pr-desc">PNG品質で低FPSアニメを出力できる</span>
               </button>
               <button className="popover-row" onClick={() => { setShowExport(false); onExportJson(); }}>
                 <span className="pr-name">JSON セーブファイル</span>
@@ -2287,7 +2459,7 @@ function App() {
 
   
   const buildExportSvg = (opts = {}) => {
-    const { bg = "theme", raster = false } = opts;
+    const { bg = "theme", raster = false, iconFrame = null } = opts;
     const source = document.querySelector(".route-svg");
     if (!source) return null;
     const svg = source.cloneNode(true);
@@ -2308,6 +2480,11 @@ function App() {
         if (!sourceIcon) { fo.remove(); return; }
         const icon = sourceIcon.cloneNode(true);
         ["x", "y", "width", "height"].forEach(name => icon.setAttribute(name, fo.getAttribute(name) ?? "0"));
+        if (iconFrame !== null && activeMap.theme.iconAnimation) {
+          const phases = [[0, 0], [-2, -1.2], [1, 0.8]];
+          const [offsetY, rotation] = phases[iconFrame % phases.length];
+          icon.setAttribute("transform", `translate(0 ${offsetY}) rotate(${rotation} 50 50)`);
+        }
         icon.setAttribute("overflow", "visible");
         fo.replaceWith(icon);
       });
@@ -2330,9 +2507,9 @@ function App() {
     setTimeout(() => URL.revokeObjectURL(url), 800);
   };
 
-  const performExportImage = async ({ bg, scale, format, quality }) => {
-    const svgText = buildExportSvg({ bg, raster: true });
-    if (!svgText) { notify("SVGの生成に失敗しました"); return; }
+  const rasterizeExportFrame = async ({ bg, scale, iconFrame = null }) => {
+    const svgText = buildExportSvg({ bg, raster: true, iconFrame });
+    if (!svgText) throw new Error("SVGの生成に失敗しました");
     const layout = computeLayout(map);
     const img = new Image();
     img.crossOrigin = "anonymous";
@@ -2343,20 +2520,45 @@ function App() {
       const canvas = document.createElement("canvas");
       canvas.width = layout.width * scale; canvas.height = layout.height * scale;
       const ctx = canvas.getContext("2d");
-      
       if (bg === "white") { ctx.fillStyle = "#f8f6ef"; ctx.fillRect(0, 0, canvas.width, canvas.height); }
       ctx.scale(scale, scale);
       ctx.drawImage(img, 0, 0);
-      const mime = format === "jpeg" ? "image/jpeg" : "image/png";
-      const imageBlob = await new Promise(res => canvas.toBlob(res, mime, format === "jpeg" ? quality : undefined));
-      if (!imageBlob) throw new Error("画像Blobを生成できませんでした");
-      const label = format === "jpeg" ? "JPEG" : "PNG";
-      downloadBlob(`kagami-map@${scale}x.${format === "jpeg" ? "jpg" : "png"}`, imageBlob);
-      notify(`${label}を保存しました (${scale}× / 背景: ${bgLabel(bg)}${format === "jpeg" ? ` / 画質: ${Math.round(quality * 100)}%` : ""})`);
-    } catch {
-      notify("画像の生成に失敗しました");
+      return canvas;
     } finally {
       URL.revokeObjectURL(url);
+    }
+  };
+
+  const performExportImage = async ({ bg, scale, format, quality }) => {
+    try {
+      const frameCount = (format === "gif" || format === "apng") && activeMap.theme.iconAnimation ? 3 : 1;
+      const canvases = [];
+      for (let frame = 0; frame < frameCount; frame += 1) {
+        canvases.push(await rasterizeExportFrame({ bg, scale, iconFrame: frameCount > 1 ? frame : null }));
+      }
+      const canvas = canvases[0];
+      let imageBlob;
+      let extension;
+      let label;
+      if (format === "gif") {
+        imageBlob = encodeGif(canvases.map(item => item.getContext("2d").getImageData(0, 0, item.width, item.height).data), { width: canvas.width, height: canvas.height, delayMs: 250 });
+        extension = "gif"; label = "GIF";
+      } else if (format === "apng") {
+        const pngFrames = await Promise.all(canvases.map(item => new Promise(res => item.toBlob(res, "image/png"))));
+        if (pngFrames.some(frame => !frame)) throw new Error("APNGフレームを生成できませんでした");
+        imageBlob = await encodeApng(pngFrames, { delayMs: 250 });
+        extension = "png"; label = "APNG";
+      } else {
+        const mime = format === "jpeg" ? "image/jpeg" : "image/png";
+        imageBlob = await new Promise(res => canvas.toBlob(res, mime, format === "jpeg" ? quality : undefined));
+        extension = format === "jpeg" ? "jpg" : "png";
+        label = format === "jpeg" ? "JPEG" : "PNG";
+      }
+      if (!imageBlob) throw new Error("画像Blobを生成できませんでした");
+      downloadBlob(`kagami-map@${scale}x.${extension}`, imageBlob);
+      notify(`${label}を保存しました (${scale}× / 背景: ${bgLabel(bg)}${format === "jpeg" ? ` / 画質: ${Math.round(quality * 100)}%` : frameCount > 1 ? " / 4FPS" : ""})`);
+    } catch {
+      notify("画像の生成に失敗しました");
     }
   };
 
@@ -2400,6 +2602,8 @@ function App() {
         undo={undo} redo={redo} canUndo={canUndo} canRedo={canRedo}
         onExportPng={() => setExportModal("png")}
         onExportJpeg={() => setExportModal("jpeg")}
+        onExportGif={() => setExportModal("gif")}
+        onExportApng={() => setExportModal("apng")}
         onExportJson={onExportJson}
         onReset={onReset}
         onFit={onFit}
@@ -2428,11 +2632,12 @@ function App() {
         open={exportModal !== null}
         format={exportModal}
         theme={activeTheme}
+        iconAnimation={Boolean(activeMap.theme.iconAnimation)}
         onClose={() => setExportModal(null)}
         onConfirm={(opts) => {
           const fmt = exportModal;
           setExportModal(null);
-          if (fmt === "png" || fmt === "jpeg") performExportImage({ ...opts, format: fmt });
+          if (["png", "jpeg", "gif", "apng"].includes(fmt)) performExportImage({ ...opts, format: fmt });
         }}
       />
       <HelpBar />

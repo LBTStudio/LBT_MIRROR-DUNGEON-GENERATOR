@@ -3,7 +3,7 @@
   root.KagamiBackgroundUtils = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof globalThis !== "undefined" ? globalThis : this, function createKagamiBackgroundUtils(root) {
-  const SUPPORTED_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
+  const SUPPORTED_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp", "image/gif", "image/apng"]);
   const MAX_SOURCE_BYTES = 12 * 1024 * 1024;
   const MAX_DATA_URL_LENGTH = 1_650_000;
   const MAX_IMAGE_SIDE = 1920;
@@ -28,6 +28,8 @@
       x: 0,
       y: 0,
       scale: 1,
+      scaleX: 1,
+      scaleY: 1,
       opacity: 0.38,
     };
   }
@@ -43,6 +45,7 @@
     const width = Math.round(clamp(input.width, 1, MAX_IMAGE_SIDE, 0));
     const height = Math.round(clamp(input.height, 1, MAX_IMAGE_SIDE, 0));
     const hasImage = Boolean(dataUrl && width && height);
+    const scale = clamp(input.scale, MIN_SCALE, MAX_SCALE, 1);
     return {
       enabled: hasImage && Boolean(input.enabled),
       dataUrl: hasImage ? dataUrl : "",
@@ -51,18 +54,20 @@
       height: hasImage ? height : 0,
       x: clamp(input.x, -12000, 12000, 0),
       y: clamp(input.y, -12000, 12000, 0),
-      scale: clamp(input.scale, MIN_SCALE, MAX_SCALE, 1),
+      scale,
+      scaleX: clamp(input.scaleX, MIN_SCALE, MAX_SCALE, scale),
+      scaleY: clamp(input.scaleY, MIN_SCALE, MAX_SCALE, scale),
       opacity: clamp(input.opacity, MIN_OPACITY, MAX_OPACITY, fallback.opacity),
     };
   }
 
   function resetBackgroundTransform(background) {
-    return { ...normalizeBackground(background), x: 0, y: 0, scale: 1, opacity: 0.38 };
+    return { ...normalizeBackground(background), x: 0, y: 0, scale: 1, scaleX: 1, scaleY: 1, opacity: 0.38 };
   }
 
   async function prepareBackgroundImage(file) {
     if (!file || !SUPPORTED_IMAGE_TYPES.has(file.type)) {
-      throw new Error("PNG・JPEG・WebP形式の画像を選択してください");
+      throw new Error("PNG・JPEG・WebP・GIF・APNG形式の画像を選択してください");
     }
     if (file.size > MAX_SOURCE_BYTES) {
       throw new Error("画像は12MB以下を選択してください");

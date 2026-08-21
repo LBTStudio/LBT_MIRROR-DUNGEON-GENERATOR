@@ -294,6 +294,19 @@
     .route-svg .nd:hover { filter: drop-shadow(0 0 8px rgba(212, 162, 75, .6)); }
     .route-svg .nd.sel { filter: drop-shadow(0 0 12px rgba(212, 162, 75, .8)); }
     .route-svg .nd.pulse > path:first-of-type { animation: pulse 2.4s ease-in-out infinite; }
+    .route-svg .icon-idle {
+      transform-origin: 50% 58%;
+      animation: icon-idle-hop 0.75s steps(3, end) infinite;
+      will-change: transform;
+    }
+    @keyframes icon-idle-hop {
+      0%, 100% { transform: translateY(0) rotate(0deg); }
+      34% { transform: translateY(-3px) rotate(-1.4deg); }
+      67% { transform: translateY(1px) rotate(1deg); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .route-svg .icon-idle { animation: none; }
+    }
     @keyframes pulse {
       0%, 100% { filter: drop-shadow(0 0 0 rgba(212, 162, 75, .2)); }
       50%      { filter: drop-shadow(0 0 12px rgba(212, 162, 75, .7)); }
@@ -675,7 +688,8 @@
 </head>
 <body>
   <div id="root"></div>
-  <script src="background-image-utils.js?rev=background-v1"></script>
-  <script type="text/babel" data-presets="react" src="combined.jsx?rev=background-v1"></script>
+  <script src="background-image-utils.js?rev=background-v2"></script>
+  <script src="animated-image-utils.js?rev=animated-export-v1"></script>
+  <script type="text/babel" data-presets="react" src="combined.jsx?rev=background-v2"></script>
 </body>
 </html>
