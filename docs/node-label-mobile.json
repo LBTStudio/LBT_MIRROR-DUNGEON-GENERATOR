@@ -1,0 +1,21 @@
+{
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "value": "モバイル個別ラベル",
+  "input": {
+    "x": 23,
+    "y": 647,
+    "width": 284,
+    "height": 33
+  },
+  "reset": {
+    "x": 313,
+    "y": 647,
+    "width": 54,
+    "height": 32
+  },
+  "selectedLabel": true,
+  "horizontalOverflow": false
+}

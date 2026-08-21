@@ -343,6 +343,10 @@ const KINDS = [
 ];
 
 const KIND_INDEX = Object.fromEntries(KINDS.map(k => [k.id, k]));
+const getNodeDisplayLabel = (node) => {
+  const custom = String(node?.label ?? "").trim();
+  return custom || KIND_INDEX[node?.kind]?.label || KIND_INDEX.skirmish.label;
+};
 
 const ICON_IDLE_MOTIONS = Object.freeze({
   origin:      Object.freeze([{ x: 0, y: 0, rotation: 0 }, { x: 0, y: -1.1, rotation: 0 }, { x: 0, y: 0.35, rotation: 0 }]),
@@ -910,6 +914,7 @@ function NodeMarker({ node, pos, selected, isPulse, iconSize, showLabel, iconAni
   const kindDef = KIND_INDEX[node.kind] ?? KIND_INDEX.skirmish;
   const Icon = IconMap[node.kind] ?? IconMap.skirmish;
   const tone = kindDef.tone;
+  const displayLabel = getNodeDisplayLabel(node);
   const ringColor = tone === "blood" ? theme.blood : tone === "brass" ? theme.brass : theme.ink;
   const ringGlow = tone === "blood" ? theme.bloodHi : theme.brass;
 
@@ -952,7 +957,7 @@ function NodeMarker({ node, pos, selected, isPulse, iconSize, showLabel, iconAni
           <text x={0} y={NODE_H/2 + 20} textAnchor="middle" fill={theme.ink}
                 fontSize="12" fontWeight="600"
                 style={{ fontFamily: "'Noto Sans JP', sans-serif" }}>
-            {node.label}
+            {displayLabel}
           </text>
         </g>
       )}
@@ -1935,7 +1940,7 @@ function Inspector({ map, selectedId, mutate, mobileSheet, setMobileSheet }) {
   return (
     <div className={`fp inspector ${isCollapsed ? "is-collapsed" : ""} ${compact ? "is-mobile" : ""}`} style={{ right: pos.right, bottom: pos.bottom, width: isCollapsed ? 44 : 300 }}>
       <div className="fp-head" onClick={() => { if (compact && isCollapsed) setMobileSheet("inspector"); }}>
-        <span className="fp-title">{isCollapsed ? "編集" : `#${node.stage + 1}-${node.row + 1} ${kindDef?.label ?? ""}`}</span>
+        <span className="fp-title">{isCollapsed ? "編集" : `#${node.stage + 1}-${node.row + 1} ${getNodeDisplayLabel(node)}`}</span>
         <button className="fp-btn" type="button" onClick={(e) => { e.stopPropagation(); toggle(); }} title={isCollapsed ? "展開" : "畳む"}>{isCollapsed ? "▲" : "▼"}</button>
       </div>
       {!isCollapsed && (
@@ -1956,10 +1961,17 @@ function Inspector({ map, selectedId, mutate, mobileSheet, setMobileSheet }) {
             })}
           </div>
 
-          <label className="i-label" htmlFor="node-label">ラベル</label>
-          <input id="node-label" className="i-input" value={node.label}
-                 maxLength={24}
-                 onChange={(e) => mutate(d => mapOps.updateNode(d, node.id, { label: e.target.value }))} />
+          <label className="i-label" htmlFor="node-label">このマスの表示名</label>
+          <div className="i-label-edit">
+            <input id="node-label" className="i-input" value={node.label ?? ""}
+                   placeholder={`${kindDef?.label ?? "一般戦闘"}（未入力時）`}
+                   maxLength={24}
+                   onChange={(e) => mutate(d => mapOps.updateNode(d, node.id, { label: e.target.value }))} />
+            <button className="tinybtn" type="button"
+                    onClick={() => mutate(d => mapOps.updateNode(d, node.id, { label: "" }))}
+                    title="未入力にして現在の種類名へ戻す">種類名</button>
+          </div>
+          <p className="i-desc i-label-hint">マスごとに自由に変更できます。未入力なら現在の種類名を表示します。</p>
 
           <div className="i-row">
             <div>
@@ -1988,7 +2000,7 @@ function Inspector({ map, selectedId, mutate, mobileSheet, setMobileSheet }) {
                 return (
                   <div key={`in-${e.from}-${e.to}`} className="i-edgerow i-edgerow-in">
                     <span className={`edge-swatch ${e.style}`} />
-                    <span>← #{src?.stage + 1}-{src?.row + 1} {KIND_INDEX[src?.kind]?.label}</span>
+                    <span>← #{src?.stage + 1}-{src?.row + 1} {getNodeDisplayLabel(src)}</span>
                     <button className="tinybtn"
                             onClick={() => mutate(d => mapOps.toggleEdgeStyle(d, e.from, e.to))} title="種類切替">↻</button>
                     <button className="tinybtn danger"
@@ -2005,7 +2017,7 @@ function Inspector({ map, selectedId, mutate, mobileSheet, setMobileSheet }) {
                 return (
                   <div key={`out-${e.from}-${e.to}`} className="i-edgerow">
                     <span className={`edge-swatch ${e.style}`} />
-                    <span>→ #{target?.stage + 1}-{target?.row + 1} {KIND_INDEX[target?.kind]?.label}</span>
+                    <span>→ #{target?.stage + 1}-{target?.row + 1} {getNodeDisplayLabel(target)}</span>
                     <button className="tinybtn"
                             onClick={() => mutate(d => mapOps.toggleEdgeStyle(d, e.from, e.to))} title="種類切替">↻</button>
                     <button className="tinybtn danger"

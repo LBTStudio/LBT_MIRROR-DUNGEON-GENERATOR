@@ -57,3 +57,13 @@ test("背景画像のアップロード直後はマップ領域へ収める倍�
   assert.match(source, /fitBackgroundToMap\(preparedBackground, layout\.width, layout\.height, \{ padding: 36 \}\)/);
   assert.match(source, /背景画像をマップ内に収めて配置しました/);
 });
+
+test("各マスの表示名は個別編集でき、空欄時は種類名をフォールバック表示する", () => {
+  assert.match(source, /const getNodeDisplayLabel/);
+  assert.match(source, /custom \|\| KIND_INDEX\[node\?\.kind\]\?\.label/);
+  assert.match(source, /このマスの表示名/);
+  assert.match(source, /placeholder=\{`\$\{kindDef\?\.label/);
+  assert.match(source, /label: ""/);
+  assert.match(source, /未入力なら現在の種類名を表示します/);
+  assert.match(source, /\{displayLabel\}/);
+});
